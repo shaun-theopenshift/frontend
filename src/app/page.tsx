@@ -152,7 +152,7 @@ export default function Home() {
                   </div>
 
                   <h3 className="text-xl font-semibold mb-2 text-gray-900">Create Your Organization Profile</h3>
-                  <p className="text-gray-600">Set up your organization's profile and specify your staffing needs.</p>
+                  <p className="text-gray-600">Set up your organization&apos;s profile and specify your staffing needs.</p>
                 </div>
                 <div className="text-center">
                   <div className="w-16 h-16 bg-[#67b5b5] rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">2</div>
