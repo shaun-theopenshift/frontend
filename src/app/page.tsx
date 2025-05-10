@@ -1,64 +1,36 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ArrowRightIcon, CalendarIcon, UserGroupIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 import Navigation from './components/Navigation';
 
-const rotatingWords = ['Opportunities', 'Partnership', 'Connections'];
-
 export default function Home() {
   const [activeTab, setActiveTab] = useState('organization');
-  const [currentWordIndex, setCurrentWordIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentWordIndex((prev) => (prev + 1) % rotatingWords.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <main className="flex min-h-screen flex-col">
       <Navigation />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#e6f2f2] to-white">
+      <section className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#e6f2f2] to-white">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
-            <div className="text-center lg:text-left flex-1">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-2">
-                Bridging Aged Care Organizations and Staff through Meaningful
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-8 sm:gap-12">
+            <div className="text-center lg:text-left flex-1 w-full">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-2">
+                Bridging Aged Care Organizations and Staff through Meaningful{' '}
+                <span className="text-[#67b5b5]">Opportunities</span>
               </h1>
-              <div className="mt-2 mb-5">
-                <span className="inline-block relative w-110 h-16 overflow-hidden border border-[#67b5b5] rounded-md align-middle">
-                  <span
-                    key={currentWordIndex}
-                    className="absolute w-full h-full top-0 left-0 flex items-center text-[#67b5b5] text-4xl sm:text-5xl md:text-6xl font-bold transition-transform duration-500 ease-in-out pl-1"
-                    style={{ transform: 'translateY(0)', animation: 'slide-up 0.5s ease' }}
-                  >
-                    {rotatingWords[currentWordIndex]}
-                  </span>
-                </span>
-              </div>
 
-
-              <style>{`
-                @keyframes slide-up {
-                  0% { transform: translateY(100%); opacity: 0; }
-                  100% { transform: translateY(0); opacity: 1; }
-                }
-              `}</style>
-
-              <p className="text-xl text-gray-600 mb-8 max-w-3xl">
+              <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8 max-w-3xl mx-auto lg:mx-0">
                 TheOpenShift streamlines the process of finding and managing shifts in aged care facilities.
                 Join our platform to connect staff with organizations seamlessly.
               </p>
-              <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
-                <button className="px-8 py-3 text-lg font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e] flex items-center justify-center">
+              <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-3 sm:gap-4">
+                <button className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e] flex items-center justify-center">
                   Sign Up
-                  <ArrowRightIcon className="w-5 h-5 ml-2" />
+                  <ArrowRightIcon className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
                 </button>
-                <button className="px-8 py-3 text-lg font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2]">
+                <button className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2]">
                   Log In
                 </button>
               </div>
