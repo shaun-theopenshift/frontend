@@ -1,22 +1,26 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
+import './globals.css';
+import { Inter } from 'next/font/google';
+import { UserProvider } from '@auth0/nextjs-auth0/client';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
-export const metadata: Metadata = {
-  title: "TheOpenShift - Aged Care Staffing Platform",
-  description: "Connect aged care staff with organizations for seamless shift management.",
+export const metadata = {
+  title: 'TheOpenShift',
+  description: 'Bridging Aged Care Organizations and Staff through Meaningful Opportunities',
 };
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-white`}>{children}</body>
+      <body className={inter.className}>
+        <UserProvider loginUrl="/api/auth/login" profileUrl="/api/auth/me">
+          {children}
+        </UserProvider>
+      </body>
     </html>
   );
 }

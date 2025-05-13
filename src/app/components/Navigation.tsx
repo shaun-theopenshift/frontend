@@ -3,22 +3,34 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bars3Icon, XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import Image from 'next/image';
 
 export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const { user, isLoading } = useUser();
 
-  // Close sign-up dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsSignupOpen(false);
       }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleMobileMenuClick = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
 
   return (
     <nav className="fixed w-full bg-white/80 backdrop-blur-md z-50 border-b border-gray-200 rounded-b-xl">
@@ -26,7 +38,7 @@ export default function Navigation() {
         <div className="flex justify-between h-16 items-center">
           <div className="flex-shrink-0">
             <Link href="/" className="text-2xl font-bold text-[#67b5b5] hover:text-[#4a9e9e]">
-              TheOpenShift
+  TheOpenShift
             </Link>
           </div>
 
@@ -38,41 +50,96 @@ export default function Navigation() {
             <Link href="/pricing" className="text-gray-600 hover:text-gray-900">Pricing</Link>
           </div>
 
+          {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <button className="px-4 py-2 text-lg font-medium text-[#67b5b5] hover:text-[#4a9e9e]">
-              Log in
-            </button>
-            <div className="relative" ref={dropdownRef}>
-              <button
-                className="px-4 py-2 text-lg font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e] flex items-center gap-1"
-                onClick={() => setIsSignupOpen(!isSignupOpen)}
-                aria-haspopup="true"
-                aria-expanded={isSignupOpen}
-              >
-                Sign up
-                <ChevronDownIcon className="w-4 h-4" />
-              </button>
-              {isSignupOpen && (
-                <div className="absolute right-0 mt-2 w-[400px] rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                  <div className="p-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <button className="w-full px-4 py-3 text-sm font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e] transition-colors duration-200">
-                        Sign up as Organization
-                      </button>
-                      <button className="w-full px-4 py-3 text-sm font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2] transition-colors duration-200">
-                        Sign up as Staff
-                      </button>
-                    </div>
+            {!isLoading && (
+              <>
+                {user ? (
+                  <div className="relative" ref={profileRef}>
+                    <button
+                      onClick={() => setIsProfileOpen(!isProfileOpen)}
+                      className="w-10 h-10 rounded-full overflow-hidden bg-[#67b5b5] text-white flex items-center justify-center font-semibold hover:bg-[#4a9e9e] transition-colors"
+                    >
+                      {user.picture ? (
+                        <Image
+                          src={user.picture}
+                          alt={user.name || 'User'}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        user.name?.[0]?.toUpperCase() || 'U'
+                      )}
+                    </button>
+                    {isProfileOpen && (
+                      <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                        <div className="py-1">
+                          <Link
+                            href="/success"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Profile
+                          </Link>
+                          <a
+                            href="/api/auth/logout"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Sign out
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
+                ) : (
+                  <>
+                    <a
+                      href="/api/auth/login"
+                      className="px-4 py-2 text-sm font-medium text-[#67b5b5] hover:text-[#4a9e9e] rounded-md border border-[#67b5b5]"
+                    >
+                      Log in
+                    </a>
+                    <div className="relative" ref={dropdownRef}>
+                      <button
+                        className="px-4 py-2 text-sm font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e] flex items-center gap-1"
+                        onClick={() => setIsSignupOpen(!isSignupOpen)}
+                        aria-haspopup="true"
+                        aria-expanded={isSignupOpen}
+                      >
+                        Sign up
+                        <ChevronDownIcon className="w-4 h-4" />
+                      </button>
+                      {isSignupOpen && (
+                        <div className="absolute right-0 mt-2 w-[400px] rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                          <div className="p-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <a
+                                href="/api/auth/login?screen_hint=signup&connection=organization"
+                                className="w-full px-4 py-3 text-sm font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e] transition-colors duration-200"
+                              >
+                                Sign up as Organization
+                              </a>
+                              <a
+                                href="/api/auth/login?screen_hint=signup&connection=staff"
+                                className="w-full px-4 py-3 text-sm font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2] transition-colors duration-200"
+                              >
+                                Sign up as Staff
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
             <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              onClick={handleMobileMenuClick}
               className="p-2 rounded-md text-gray-600 hover:bg-gray-100"
               aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             >
@@ -85,10 +152,10 @@ export default function Navigation() {
           </div>
         </div>
 
-        {/* Mobile Navigation with smooth animation */}
+        {/* Mobile Navigation */}
         <div
-          className={`md:hidden overflow-hidden transition-[max-height] duration-500 ease-in-out ${
-            isMenuOpen ? 'max-h-[400px]' : 'max-h-0'
+          className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+            isMenuOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
@@ -105,17 +172,65 @@ export default function Navigation() {
               Pricing
             </Link>
             <div className="pt-4 pb-3 border-t border-gray-200">
-              <button className="w-full px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e]">
-                Log in
-              </button>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <button className="w-full px-3 py-2 text-base font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e]">
-                  Sign up as Organization
-                </button>
-                <button className="w-full px-3 py-2 text-base font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2]">
-                  Sign up as Staff
-                </button>
-              </div>
+              {!isLoading && (
+                <>
+                  {user ? (
+                    <>
+                      <div className="flex items-center px-3 py-2">
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-[#67b5b5] text-white flex items-center justify-center font-semibold mr-3">
+                          {user.picture ? (
+                            <Image
+                              src={user.picture}
+                              alt={user.name || 'User'}
+                              width={32}
+                              height={32}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            user.name?.[0]?.toUpperCase() || 'U'
+                          )}
+                        </div>
+                        <span className="text-gray-700">{user.name}</span>
+                      </div>
+                      <Link
+                        href="/success"
+                        className="block px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e]"
+                      >
+                        Profile
+                      </Link>
+                      <a
+                        href="/api/auth/logout"
+                        className="block px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e]"
+                      >
+                        Sign out
+                      </a>
+                    </>
+                  ) : (
+                    <>
+                      <a
+                        href="/api/auth/login"
+                        className="block px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e] border border-[#67b5b5] rounded-md text-center"
+                      >
+                        Log in
+                      </a>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <a
+                          href="/api/auth/login?screen_hint=signup&connection=organization"
+                          className="w-full px-3 py-2 text-base font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e]"
+                        >
+                          Sign up as Organization
+                        </a>
+                        <a
+                          href="/api/auth/login?screen_hint=signup&connection=staff"
+                          className="w-full px-3 py-2 text-base font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2]"
+                        >
+                          Sign up as Staff
+                        </a>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
