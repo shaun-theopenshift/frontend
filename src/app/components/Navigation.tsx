@@ -38,7 +38,7 @@ export default function Navigation() {
         <div className="flex justify-between h-16 items-center">
           <div className="flex-shrink-0">
             <Link href="/" className="text-2xl font-bold text-[#67b5b5] hover:text-[#4a9e9e]">
-  TheOpenShift
+              TheOpenShift
             </Link>
           </div>
 
@@ -76,7 +76,7 @@ export default function Navigation() {
                       <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                         <div className="py-1">
                           <Link
-                            href="/success"
+                            href="/profile-completion"
                             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
                             Profile
@@ -94,7 +94,7 @@ export default function Navigation() {
                 ) : (
                   <>
                     <a
-                      href="/api/auth/login"
+                      href="/api/auth/login?returnTo=/role-selection"
                       className="px-4 py-2 text-sm font-medium text-[#67b5b5] hover:text-[#4a9e9e] rounded-md border border-[#67b5b5]"
                     >
                       Log in
@@ -114,13 +114,13 @@ export default function Navigation() {
                           <div className="p-4">
                             <div className="grid grid-cols-2 gap-4">
                               <a
-                                href="/api/auth/login?screen_hint=signup&connection=organization"
+                                href="/api/auth/login?screen_hint=signup&returnTo=/role-selection"
                                 className="w-full px-4 py-3 text-sm font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e] transition-colors duration-200"
                               >
                                 Sign up as Organization
                               </a>
                               <a
-                                href="/api/auth/login?screen_hint=signup&connection=staff"
+                                href="/api/auth/login?screen_hint=signup&returnTo=/role-selection"
                                 className="w-full px-4 py-3 text-sm font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2] transition-colors duration-200"
                               >
                                 Sign up as Staff
@@ -153,85 +153,74 @@ export default function Navigation() {
         </div>
 
         {/* Mobile Navigation */}
-        <div
-          className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
-            isMenuOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
-          }`}
-        >
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            <a href="#features" className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50">
-              Features
-            </a>
-            <a href="#how-it-works" className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50">
-              How it Works
-            </a>
-            <a href="#contact" className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50">
-              Contact
-            </a>
-            <Link href="/pricing" className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50">
-              Pricing
-            </Link>
-            <div className="pt-4 pb-3 border-t border-gray-200">
-              {!isLoading && (
-                <>
-                  {user ? (
-                    <>
-                      <div className="flex items-center px-3 py-2">
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-[#67b5b5] text-white flex items-center justify-center font-semibold mr-3">
-                          {user.picture ? (
-                            <Image
-                              src={user.picture}
-                              alt={user.name || 'User'}
-                              width={32}
-                              height={32}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            user.name?.[0]?.toUpperCase() || 'U'
-                          )}
-                        </div>
-                        <span className="text-gray-700">{user.name}</span>
+        <div className={`md:hidden ${isMenuOpen ? 'block' : 'hidden'}`}>
+          <div className="px-2 pt-2 pb-3 space-y-1">
+            <a href="#features" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900">Features</a>
+            <a href="#how-it-works" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900">How it Works</a>
+            <a href="#contact" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900">Contact</a>
+            <Link href="/pricing" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900">Pricing</Link>
+          </div>
+
+          <div className="pt-4 pb-3 border-t border-gray-200">
+            {!isLoading && (
+              <>
+                {user ? (
+                  <>
+                    <div className="flex items-center px-3 py-2">
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-[#67b5b5] text-white flex items-center justify-center font-semibold mr-3">
+                        {user.picture ? (
+                          <Image
+                            src={user.picture}
+                            alt={user.name || 'User'}
+                            width={32}
+                            height={32}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          user.name?.[0]?.toUpperCase() || 'U'
+                        )}
                       </div>
-                      <Link
-                        href="/success"
-                        className="block px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e]"
-                      >
-                        Profile
-                      </Link>
+                      <span className="text-gray-700">{user.name}</span>
+                    </div>
+                    <Link
+                      href="/profile-completion"
+                      className="block px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e]"
+                    >
+                      Profile
+                    </Link>
+                    <a
+                      href="/api/auth/logout"
+                      className="block px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e]"
+                    >
+                      Sign out
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <a
+                      href="/api/auth/login?returnTo=/role-selection"
+                      className="block px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e] border border-[#67b5b5] rounded-md text-center"
+                    >
+                      Log in
+                    </a>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
                       <a
-                        href="/api/auth/logout"
-                        className="block px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e]"
+                        href="/api/auth/login?screen_hint=signup&returnTo=/role-selection"
+                        className="w-full px-3 py-2 text-base font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e]"
                       >
-                        Sign out
+                        Sign up as Organization
                       </a>
-                    </>
-                  ) : (
-                    <>
                       <a
-                        href="/api/auth/login"
-                        className="block px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e] border border-[#67b5b5] rounded-md text-center"
+                        href="/api/auth/login?screen_hint=signup&returnTo=/role-selection"
+                        className="w-full px-3 py-2 text-base font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2]"
                       >
-                        Log in
+                        Sign up as Staff
                       </a>
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        <a
-                          href="/api/auth/login?screen_hint=signup&connection=organization"
-                          className="w-full px-3 py-2 text-base font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e]"
-                        >
-                          Sign up as Organization
-                        </a>
-                        <a
-                          href="/api/auth/login?screen_hint=signup&connection=staff"
-                          className="w-full px-3 py-2 text-base font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2]"
-                        >
-                          Sign up as Staff
-                        </a>
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
