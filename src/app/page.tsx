@@ -92,20 +92,11 @@ export default function Home() {
 
       {/* SVG Illustration – now visible on all screen sizes and on top in mobile */}
       <div className="flex-1 w-full">
-        <svg
-          width="100%"
-          height="100%"
-          viewBox="0 0 500 500"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+        <img
+          src="/illus.png"
+          alt="TheOpenShift Illustration"
           className="w-full h-auto max-w-lg mx-auto"
-        >
-          <path d="M250 50C138.5 50 50 138.5 50 250C50 361.5 138.5 450 250 450C361.5 450 450 361.5 450 250C450 138.5 361.5 50 250 50ZM250 400C166.5 400 100 333.5 100 250C100 166.5 166.5 100 250 100C333.5 100 400 166.5 400 250C400 333.5 333.5 400 250 400Z" fill="#67b5b5" fillOpacity="0.2" />
-          <path d="M250 150C194.8 150 150 194.8 150 250C150 305.2 194.8 350 250 350C305.2 350 350 305.2 350 250C350 194.8 305.2 150 250 150ZM250 300C211.4 300 200 288.6 200 250C200 211.4 211.4 200 250 200C288.6 200 300 211.4 300 250C300 288.6 288.6 300 250 300Z" fill="#67b5b5" fillOpacity="0.3" />
-          <path d="M250 200C228.9 200 200 228.9 200 250C200 271.1 228.9 300 250 300C271.1 300 300 271.1 300 250C300 228.9 271.1 200 250 200Z" fill="#67b5b5" fillOpacity="0.4" />
-          <path d="M250 225C238.4 225 225 238.4 225 250C225 261.6 238.4 275 250 275C261.6 275 275 261.6 275 250C275 238.4 261.6 225 250 225Z" fill="#67b5b5" />
-          <path d="M150 150L200 200M300 200L350 150M150 350L200 300M300 300L350 350" stroke="#67b5b5" strokeWidth="4" strokeLinecap="round" />
-        </svg>
+        />
       </div>
       
     </div>

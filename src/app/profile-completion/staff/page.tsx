@@ -1,13 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { UserGroupIcon, BuildingOfficeIcon, UserCircleIcon, IdentificationIcon, CheckBadgeIcon, CheckCircleIcon, DocumentIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon, BuildingOfficeIcon, UserCircleIcon, IdentificationIcon, CheckBadgeIcon, CheckCircleIcon, DocumentIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 const TABS = [
     { label: "Profile", icon: <UserCircleIcon className="w-4 h-4 mr-1.5" /> },
     { label: "Account", icon: <IdentificationIcon className="w-4 h-4 mr-1.5" /> },
     { label: "Certificates", icon: <CheckBadgeIcon className="w-4 h-4 mr-1.5" /> },
+    { label: "Agreements", icon: <DocumentIcon className="w-4 h-4 mr-1.5" /> },
     { label: "Submit", icon: <CheckCircleIcon className="w-4 h-4 mr-1.5" /> },
 ];
 
@@ -18,6 +22,49 @@ interface Experience {
     endDate: string;
     isCurrent: boolean;
     description: string;
+}
+
+// Add TFN validation function
+function validateTFN(tfn: string): boolean {
+    // Remove any non-digit characters
+    const digits = tfn.replace(/\D/g, '');
+    
+    // Check if length is 9 digits
+    if (digits.length !== 9) return false;
+    
+    // TFN validation algorithm
+    const weights = [1, 4, 3, 7, 5, 8, 6, 9, 10];
+    let sum = 0;
+    
+    for (let i = 0; i < 9; i++) {
+        sum += parseInt(digits[i]) * weights[i];
+    }
+    
+    return sum % 11 === 0;
+}
+
+function calculateExperience(startDate: string, endDate: string, isCurrent: boolean): string {
+    if (!startDate) return '';
+    
+    const start = new Date(startDate);
+    const end = isCurrent ? new Date() : new Date(endDate);
+    
+    if (isNaN(start.getTime()) || (!isCurrent && isNaN(end.getTime()))) return '';
+    
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffYears = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 365));
+    const diffMonths = Math.floor((diffTime % (1000 * 60 * 60 * 24 * 365)) / (1000 * 60 * 60 * 24 * 30));
+    
+    let result = '';
+    if (diffYears > 0) {
+        result += `${diffYears} year${diffYears > 1 ? 's' : ''}`;
+    }
+    if (diffMonths > 0) {
+        if (result) result += ' and ';
+        result += `${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
+    }
+    
+    return result || 'Less than a month';
 }
 
 function GeoapifyAutocomplete({ value, onChange }: { value: string, onChange: (address: string) => void }) {
@@ -32,7 +79,6 @@ function GeoapifyAutocomplete({ value, onChange }: { value: string, onChange: (a
         if (!input) { setSuggestions([]); return; }
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         const apiKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY;
-        console.log(apiKey); //guu khalta mahnun api key log
         timeoutRef.current = setTimeout(() => {
             fetch(`https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(input)}&limit=5&apiKey=${apiKey}`)
                 .then(res => res.json())
@@ -48,7 +94,7 @@ function GeoapifyAutocomplete({ value, onChange }: { value: string, onChange: (a
                 value={input}
                 onChange={e => { setInput(e.target.value); setShowSuggestions(true); }}
                 onFocus={() => setShowSuggestions(true)}
-                placeholder="Start typing address..."
+                placeholder="Start typing your street name..."
                 autoComplete="off"
             />
             {showSuggestions && suggestions.length > 0 && (
@@ -68,85 +114,113 @@ function GeoapifyAutocomplete({ value, onChange }: { value: string, onChange: (a
     );
 }
 
+const API_BASE_URL = "https://api.theopenshift.com";
+
+export async function apiRequest<T>(
+  endpoint: string,
+  method: "POST" | "PATCH" = "POST",
+  body?: any
+): Promise<T> {
+  try {
+    const session = await fetch("/api/auth/session").then((res) => res.json());
+    console.log("Session:", session);
+    if (!session?.accessToken) throw new Error("No access token available");
+
+    const url = `${API_BASE_URL}${endpoint}`;
+    const response = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": `Bearer ${session.accessToken}`,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API error response:', errorText);
+      if (errorText.includes('User already has a role assigned')) {
+        throw new Error('You have already completed your profile or have a role assigned. If you believe this is a mistake, please contact support.');
+      }
+      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    // Handle empty response
+    const text = await response.text();
+    return text ? JSON.parse(text) : {};
+  } catch (error) {
+    console.error('API Request Error:', error);
+    throw error;
+  }
+}
+
+interface StaffProfile {
+    fname: string;
+    lname: string;
+    address: string;
+    dob: string;
+    gender: string;
+    phone: string;
+    bio: string;
+    emergency_contact: string;
+    emergency_contact_phone: string;
+    skills: string[];
+    tfn: string;
+}
+
+const api = {
+  // Create user
+  updateStaffProfile: (data: Partial<StaffProfile>) =>
+    apiRequest<StaffProfile>('/v1/users/user', 'POST', data),
+
+  // Get current user profile
+  getProfile: () => apiRequest<StaffProfile>('/v1/users/me'),
+};
+
 export default function ProfileCompletion() {
+    const { user, error, isLoading: authLoading } = useUser();
+    const searchParams = useSearchParams();
+    // @ts-expect-error Next.js useSearchParams never returns null
+    const isEditMode = searchParams.get('edit') === '1';
+    const [loading, setLoading] = useState(isEditMode);
     const [activeTab, setActiveTab] = useState("Profile");
-    const [profilePic, setProfilePic] = useState<string | null>(null);
     const [aboutMe, setAboutMe] = useState("");
-    const [experiences, setExperiences] = useState<Experience[]>([{
-        companyName: '',
-        position: '',
-        startDate: '',
-        endDate: '',
-        isCurrent: false,
-        description: ''
-    }]);
-    const [personalDetails, setPersonalDetails] = useState({ firstName: "", lastName: "", city: "", state: "", dob: "", gender: "", address: "" });
+    const [personalDetails, setPersonalDetails] = useState({ 
+        firstName: "", 
+        lastName: "", 
+        address: "", 
+        dob: "", 
+        gender: "", 
+        phone: ""
+    });
     const [emergencyContact, setEmergencyContact] = useState({ name: "", phone: "" });
-    const [superannuation, setSuperannuation] = useState({ fundName: "", memberNumber: "" });
     const [tfn, setTfn] = useState({ number: "" });
-    const [bankDetails, setBankDetails] = useState({ accountName: "", bsb: "", accountNumber: "" });
-    const [fit2work, setFit2work] = useState(false);
-    const [additionalDocuments, setAdditionalDocuments] = useState<File[]>([]);
     const [showToast, setShowToast] = useState(false);
+    
+    // Add these missing states and refs
+    const [profilePic, setProfilePic] = useState<string | null>(null);
     const [showAvatarMenu, setShowAvatarMenu] = useState(false);
     const avatarRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    const router = useRouter();
 
-    // Required fields check
-    const allFilled =
-        profilePic && aboutMe && experiences.every(exp =>
-            exp.companyName && exp.position && exp.startDate && (exp.isCurrent || exp.endDate) && exp.description
-        ) && personalDetails.firstName && personalDetails.lastName && personalDetails.address && emergencyContact.name && emergencyContact.phone && superannuation.fundName && superannuation.memberNumber
-        && tfn.number && bankDetails.accountName && bankDetails.bsb && bankDetails.accountNumber && fit2work;
+    const [submissionStatus, setSubmissionStatus] = useState<{
+        type: 'success' | 'error' | null;
+        message: string;
+    }>({ type: null, message: '' });
 
-    // Profile picture upload handler
+    const [skills, setSkills] = useState('');
+
+    // Add the profile picture handler
     const handleProfilePic = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setProfilePic(URL.createObjectURL(e.target.files[0]));
         }
     };
 
-    // Experience handlers
-    const addExperience = () => {
-        setExperiences([...experiences, {
-            companyName: '',
-            position: '',
-            startDate: '',
-            endDate: '',
-            isCurrent: false,
-            description: ''
-        }]);
-    };
-
-    const removeExperience = (index: number) => {
-        setExperiences(experiences.filter((_, i) => i !== index));
-    };
-
-    const updateExperience = (index: number, field: keyof Experience, value: string | boolean) => {
-        const newExperiences = [...experiences];
-        newExperiences[index] = { ...newExperiences[index], [field]: value };
-        setExperiences(newExperiences);
-    };
-
-    // Document upload handler
-    const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            setAdditionalDocuments([...additionalDocuments, ...Array.from(e.target.files)]);
-        }
-    };
-
-    // Remove document handler
-    const removeDocument = (index: number) => {
-        setAdditionalDocuments(additionalDocuments.filter((_, i) => i !== index));
-    };
-
-    // Toast handler
-    const handleFinish = () => {
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
-    };
-
-    // Close avatar dropdown on outside click
+    // Add click outside handler for avatar menu
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (avatarRef.current && !avatarRef.current.contains(event.target as Node)) {
@@ -160,6 +234,168 @@ export default function ProfileCompletion() {
         }
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [showAvatarMenu]);
+
+    // Validation functions
+    const validateName = (name: string): boolean => {
+        return /^[A-Za-z\s'-]{2,50}$/.test(name);
+    };
+
+    const validatePhone = (phone: string): boolean => {
+        return /^(\+61|0)[2-4789]\d{8}$/.test(phone);
+    };
+
+    const validateTFN = (tfn: string): boolean => {
+        // Remove any non-digit characters
+        const digits = tfn.replace(/\D/g, '');
+        // Check if length is 9 digits
+        if (digits.length !== 9) return false;
+        
+        // TFN validation algorithm
+        const weights = [1, 4, 3, 7, 5, 8, 6, 9, 10];
+        let sum = 0;
+        
+        for (let i = 0; i < 9; i++) {
+            sum += parseInt(digits[i]) * weights[i];
+        }
+        
+        return sum % 11 === 0;
+    };
+
+    const validateDateOfBirth = (dob: string): boolean => {
+        const date = new Date(dob);
+        const today = new Date();
+        const age = today.getFullYear() - date.getFullYear();
+        const monthDiff = today.getMonth() - date.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+            return age - 1 >= 18;
+        }
+        return age >= 18;
+    };
+
+    // Required fields check
+    const allFilled =
+        aboutMe && 
+        personalDetails.firstName && validateName(personalDetails.firstName) &&
+        personalDetails.lastName && validateName(personalDetails.lastName) &&
+        personalDetails.address && 
+        personalDetails.dob && validateDateOfBirth(personalDetails.dob) &&
+        personalDetails.gender &&
+        personalDetails.phone && validatePhone(personalDetails.phone) &&
+        emergencyContact.name && validateName(emergencyContact.name) &&
+        emergencyContact.phone && validatePhone(emergencyContact.phone) &&
+        tfn.number && validateTFN(tfn.number);
+
+    // Check user type and redirect if necessary
+    useEffect(() => {
+        if (user) {
+            const userType = user['https://theopenshift.com/user_type'];
+            if (userType === 'organization') {
+                router.push('/profile-completion/organization');
+            }
+        }
+    }, [user, router]);
+
+    // Prefill form in edit mode
+    useEffect(() => {
+        if (isEditMode && user) {
+            setLoading(true);
+            fetch('/api/auth/session')
+                .then(res => res.json())
+                .then(session => {
+                    if (!session?.accessToken) throw new Error('No access token');
+                    return fetch('https://api.theopenshift.com/v1/users/me', {
+                        headers: {
+                            'Authorization': `Bearer ${session.accessToken}`,
+                            'Accept': 'application/json',
+                        },
+                    });
+                })
+                .then(res => res.json())
+                .then(profile => {
+                    setAboutMe(profile.bio || '');
+                    setPersonalDetails({
+                        firstName: profile.fname || '',
+                        lastName: profile.lname || '',
+                        address: profile.address || '',
+                        dob: profile.dob || '',
+                        gender: profile.gender || '',
+                        phone: profile.phone || '',
+                    });
+                    setEmergencyContact({
+                        name: profile.emergency_contact || '',
+                        phone: profile.emergency_contact_phone || '',
+                    });
+                    setTfn({ number: profile.tfn || '' });
+                    setSkills(profile.skills ? profile.skills.join(', ') : '');
+                })
+                .catch(e => {
+                    setSubmissionStatus({ type: 'error', message: 'Failed to load profile for editing.' });
+                })
+                .finally(() => setLoading(false));
+        }
+    }, [isEditMode, user]);
+
+    // Update the handleFinish function to map the data correctly
+    const handleFinish = async () => {
+        if (!user) {
+            setSubmissionStatus({
+                type: 'error',
+                message: 'You must be logged in to submit your profile.'
+            });
+            return;
+        }
+        try {
+            setSubmissionStatus({
+                type: null,
+                message: isEditMode ? 'Updating your profile...' : 'Creating your profile...'
+            });
+            const skillsArray = skills
+                ? skills.split(',').map(s => s.trim()).filter(Boolean)
+                : [];
+            const profileData: StaffProfile = {
+                fname: String(personalDetails.firstName),
+                lname: String(personalDetails.lastName),
+                address: String(personalDetails.address),
+                dob: String(personalDetails.dob),
+                gender: String(personalDetails.gender),
+                phone: String(personalDetails.phone),
+                bio: String(aboutMe),
+                emergency_contact: String(emergencyContact.name),
+                emergency_contact_phone: String(emergencyContact.phone),
+                tfn: String(tfn.number),
+                skills: skillsArray,
+            };
+            console.log('Sending profile data:', JSON.stringify(profileData, null, 2));
+            let result;
+            if (isEditMode) {
+                result = await apiRequest('/v1/users/user', 'PATCH', profileData);
+            } else {
+                result = await api.updateStaffProfile(profileData);
+            }
+            console.log(result);
+            setSubmissionStatus({
+                type: 'success',
+                message: isEditMode ? 'Profile updated successfully!' : 'Profile created successfully!'
+            });
+            setShowToast(true);
+            setTimeout(() => {
+                setShowToast(false);
+                router.push('/profile');
+            }, 3000);
+        } catch (error: unknown) {
+            console.error('Error creating profile:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            setSubmissionStatus({
+                type: 'error',
+                message: `Failed to ${isEditMode ? 'update' : 'create'} profile: ${errorMessage}. Please try again or contact support if the problem persists.`
+            });
+        }
+    };
+
+    if (loading) {
+        return <div className="min-h-screen flex items-center justify-center text-lg">Loading profile for editing...</div>;
+    }
 
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-tr from-[#fafbfc] via-[#e6f2f2] to-[#b2e0e0]">
@@ -177,7 +413,7 @@ export default function ProfileCompletion() {
                     <div className="relative z-20" ref={avatarRef}>
                         <button
                             className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden focus:outline-none focus:ring-2 focus:ring-[#67b5b5]"
-                            onClick={() => setShowAvatarMenu((v) => !v)}
+                            onClick={() => setShowAvatarMenu((prev: boolean) => !prev)}
                             aria-label="Open user menu"
                             tabIndex={0}
                         >
@@ -189,20 +425,31 @@ export default function ProfileCompletion() {
                         </button>
                         {showAvatarMenu && (
                             <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
-                                <a
-                                    href="/api/auth/logout"
-                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-b-md"
-                                    onClick={() => setShowAvatarMenu(false)}
-                                >
-                                    Logout
-                                </a>
+                                <div className="flex flex-col items-center justify-center px-3 py-2">
+                                    <a
+                                        href="/api/auth/logout"
+                                        className="px-3 py-2 rounded-md bg-gray-200 text-[#67b5b5] font-medium hover:bg-gray-300 transition w-full text-center"
+                                    >
+                                        Sign out
+                                    </a>
+                                </div>
                             </div>
                         )}
                     </div>
                 </nav>
-                {/* Yellow Banner */}
-                <div className="w-full bg-yellow-300 text-yellow-900 text-center py-2 font-medium text-base shadow relative z-5" style={{ letterSpacing: 0.2 }}>
-                    Your profile verification and completion is not finished!
+                {/* Dynamic Banner */}
+                <div className={`w-full text-center py-2 font-medium text-base shadow relative z-5 ${
+                    submissionStatus.type === 'success' 
+                        ? 'bg-green-300 text-green-900' 
+                        : submissionStatus.type === 'error'
+                        ? 'bg-red-300 text-red-900'
+                        : 'bg-yellow-300 text-yellow-900'
+                }`} style={{ letterSpacing: 0.2 }}>
+                    {submissionStatus.type === 'success' 
+                        ? 'Your profile has been successfully updated!'
+                        : submissionStatus.type === 'error'
+                        ? submissionStatus.message
+                        : 'Your profile verification and completion is not finished!'}
                 </div>
                 {/* Main Content Responsive Layout */}
                 <div className="flex-1 w-full max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-8 relative z-10">
@@ -238,12 +485,22 @@ export default function ProfileCompletion() {
                                                 {profilePic ? (
                                                     <Image src={profilePic} alt="Profile" width={96} height={96} className="object-cover w-24 h-24" />
                                                 ) : (
-                                                    <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                    <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    </svg>
                                                 )}
                                             </div>
-                                            <input type="file" accept="image/*" className="absolute bottom-0 right-0 w-8 h-8 opacity-0 cursor-pointer" onChange={handleProfilePic} />
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                className="absolute bottom-0 right-0 w-8 h-8 opacity-0 cursor-pointer" 
+                                                onChange={handleProfilePic}
+                                                ref={fileInputRef}
+                                            />
                                             <div className="absolute bottom-0 right-0 w-8 h-8 bg-[#67b5b5] rounded-full flex items-center justify-center text-white cursor-pointer pointer-events-none">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                                                </svg>
                                             </div>
                                         </div>
                                         <div className="flex-1 text-center sm:text-left">
@@ -264,99 +521,104 @@ export default function ProfileCompletion() {
                                             />
                                         </div>
 
-                                        <div>
-                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-                                                <label className="block font-semibold">Experience</label>
-                                                <button
-                                                    onClick={addExperience}
-                                                    className="text-[#67b5b5] hover:text-[#4a9e9e] text-sm font-medium"
-                                                >
-                                                    + Add Experience
-                                                </button>
+                                        {/* Personal Details Section */}
+                                        <div className="border-t pt-6">
+                                            <h3 className="text-lg font-semibold mb-4">Personal Details</h3>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block font-semibold mb-2">First Name</label>
+                                                    <input 
+                                                        className={`w-full border rounded-md p-2 text-black ${
+                                                            personalDetails.firstName ? (validateName(personalDetails.firstName) ? 'border-green-500' : 'border-red-500') : ''
+                                                        }`}
+                                                        value={personalDetails.firstName} 
+                                                        onChange={e => setPersonalDetails({ ...personalDetails, firstName: e.target.value })} 
+                                                        placeholder="First name" 
+                                                    />
+                                                    {personalDetails.firstName && !validateName(personalDetails.firstName) && (
+                                                        <p className="text-red-500 text-sm mt-1">Please enter a valid first name (letters only)</p>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <label className="block font-semibold mb-2">Last Name</label>
+                                                    <input 
+                                                        className={`w-full border rounded-md p-2 text-black ${
+                                                            personalDetails.lastName ? (validateName(personalDetails.lastName) ? 'border-green-500' : 'border-red-500') : ''
+                                                        }`}
+                                                        value={personalDetails.lastName} 
+                                                        onChange={e => setPersonalDetails({ ...personalDetails, lastName: e.target.value })} 
+                                                        placeholder="Last name" 
+                                                    />
+                                                    {personalDetails.lastName && !validateName(personalDetails.lastName) && (
+                                                        <p className="text-red-500 text-sm mt-1">Please enter a valid last name (letters only)</p>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="space-y-6">
-                                                {experiences.map((exp, index) => (
-                                                    <div key={index} className="border rounded-lg p-4 space-y-4">
-                                                        <div className="flex flex-col sm:flex-row justify-between gap-2">
-                                                            <h4 className="font-medium">Experience {index + 1}</h4>
-                                                            {experiences.length > 1 && (
-                                                                <button
-                                                                    onClick={() => removeExperience(index)}
-                                                                    className="text-red-500 hover:text-red-600 text-sm self-start sm:self-center"
-                                                                >
-                                                                    Remove
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                            <div>
-                                                                <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={exp.companyName}
-                                                                    onChange={(e) => updateExperience(index, 'companyName', e.target.value)}
-                                                                    className="w-full border rounded-md p-2"
-                                                                    placeholder="Enter company name"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={exp.position}
-                                                                    onChange={(e) => updateExperience(index, 'position', e.target.value)}
-                                                                    className="w-full border rounded-md p-2"
-                                                                    placeholder="Enter position"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                            <div>
-                                                                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                                                                <input
-                                                                    type="date"
-                                                                    value={exp.startDate}
-                                                                    onChange={(e) => updateExperience(index, 'startDate', e.target.value)}
-                                                                    className="w-full border rounded-md p-2"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                                                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                                                                    <input
-                                                                        type="date"
-                                                                        value={exp.endDate}
-                                                                        onChange={(e) => updateExperience(index, 'endDate', e.target.value)}
-                                                                        className="w-full border rounded-md p-2"
-                                                                        disabled={exp.isCurrent}
-                                                                    />
-                                                                    <div className="flex items-center mt-2 sm:mt-0">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            id={`current-${index}`}
-                                                                            checked={exp.isCurrent}
-                                                                            onChange={(e) => updateExperience(index, 'isCurrent', e.target.checked)}
-                                                                            className="w-4 h-4 text-[#67b5b5] border-gray-300 rounded focus:ring-[#67b5b5]"
-                                                                        />
-                                                                        <label htmlFor={`current-${index}`} className="ml-2 text-sm text-gray-600">
-                                                                            Currently employed
-                                                                        </label>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                                            <textarea
-                                                                value={exp.description}
-                                                                onChange={(e) => updateExperience(index, 'description', e.target.value)}
-                                                                className="w-full border rounded-md p-2"
-                                                                rows={3}
-                                                                placeholder="Describe your responsibilities and achievements..."
-                                                            />
-                                                        </div>
+                                            <div className="mt-4">
+                                                <label className="block font-semibold mb-2">Address</label>
+                                                <GeoapifyAutocomplete
+                                                    value={personalDetails.address || ''}
+                                                    onChange={address => setPersonalDetails({ ...personalDetails, address })}
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                                <div>
+                                                    <label className="block font-semibold mb-2">Date of Birth</label>
+                                                    <input 
+                                                        type="date" 
+                                                        className={`w-full border rounded-md p-2 text-black ${
+                                                            personalDetails.dob ? (validateDateOfBirth(personalDetails.dob) ? 'border-green-500' : 'border-red-500') : ''
+                                                        }`}
+                                                        value={personalDetails.dob} 
+                                                        onChange={e => setPersonalDetails({ ...personalDetails, dob: e.target.value })} 
+                                                    />
+                                                    {personalDetails.dob && !validateDateOfBirth(personalDetails.dob) && (
+                                                        <p className="text-red-500 text-sm mt-1">You must be at least 18 years old</p>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <label className="block font-semibold mb-2">Gender</label>
+                                                    <select className="w-full border rounded-md p-2 text-black" value={personalDetails.gender} onChange={e => setPersonalDetails({ ...personalDetails, gender: e.target.value })}>
+                                                        <option value="">Select gender</option>
+                                                        <option value="male">Male</option>
+                                                        <option value="female">Female</option>
+                                                        <option value="other">Other</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4">
+                                                <label className="block font-semibold mb-2">Phone Number</label>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-1 px-3 py-2 bg-gray-50 border rounded-l-md">
+                                                        <span className="text-lg">🇦🇺</span>
+                                                        <span className="text-gray-600">+61</span>
                                                     </div>
-                                                ))}
+                                                    <input 
+                                                        className={`flex-1 border rounded-r-md p-2 text-black ${
+                                                            personalDetails.phone ? (validatePhone(personalDetails.phone) ? 'border-green-500' : 'border-red-500') : ''
+                                                        }`}
+                                                        value={personalDetails.phone} 
+                                                        onChange={e => setPersonalDetails({ ...personalDetails, phone: e.target.value })} 
+                                                        placeholder="Enter phone number (e.g., 412345678)" 
+                                                    />
+                                                </div>
+                                                {personalDetails.phone && !validatePhone(personalDetails.phone) && (
+                                                    <p className="text-red-500 text-sm mt-1">Please enter a valid Australian phone number</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Healthcare Skill Section */}
+                                        <div className="border-t pt-6">
+                                            <h3 className="text-lg font-semibold mb-4">Healthcare Skill</h3>
+                                            <div className="space-y-4">
+                                                <input
+                                                    type="text"
+                                                    value={skills}
+                                                    onChange={(e) => setSkills(e.target.value)}
+                                                    className="w-full border rounded-md p-2 text-black"
+                                                    placeholder="Enter skills separated by commas (e.g., Patient Care, Medical Records)"
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -365,94 +627,62 @@ export default function ProfileCompletion() {
 
                             {activeTab === "Account" && (
                                 <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8 flex flex-col gap-8 text-black">
-                                    <h3 className="text-lg font-semibold mb-4">Personal Details</h3>
-                                    <div className="flex flex-col gap-4">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block font-semibold mb-2">First Name</label>
-                                                <input className="w-full border rounded-md p-2 text-black" value={personalDetails.firstName} onChange={e => setPersonalDetails({ ...personalDetails, firstName: e.target.value })} placeholder="First name" />
-                                            </div>
-                                            <div>
-                                                <label className="block font-semibold mb-2">Last Name</label>
-                                                <input className="w-full border rounded-md p-2 text-black" value={personalDetails.lastName} onChange={e => setPersonalDetails({ ...personalDetails, lastName: e.target.value })} placeholder="Last name" />
-                                            </div>
-                                        </div>
+                                    <div className="space-y-6">
                                         <div>
-                                            <label className="block font-semibold mb-2">Address</label>
-                                            <GeoapifyAutocomplete
-                                                value={personalDetails.address || ''}
-                                                onChange={address => setPersonalDetails({ ...personalDetails, address })}
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block font-semibold mb-2">Date of Birth</label>
-                                                <input type="date" className="w-full border rounded-md p-2 text-black" value={personalDetails.dob} onChange={e => setPersonalDetails({ ...personalDetails, dob: e.target.value })} />
-                                            </div>
-                                            <div>
-                                                <label className="block font-semibold mb-2">Gender</label>
-                                                <select className="w-full border rounded-md p-2 text-black" value={personalDetails.gender} onChange={e => setPersonalDetails({ ...personalDetails, gender: e.target.value })}>
-                                                    <option value="">Select gender</option>
-                                                    <option value="male">Male</option>
-                                                    <option value="female">Female</option>
-                                                    <option value="other">Other</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {/* Emergency Contact Section */}
-                                    <div className="border-t pt-6">
-                                        <h3 className="text-lg font-semibold mb-4">Emergency Contact</h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block font-semibold mb-2">Name</label>
-                                                <input className="w-full border rounded-md p-2 text-black" value={emergencyContact.name} onChange={e => setEmergencyContact({ ...emergencyContact, name: e.target.value })} placeholder="Emergency contact name" />
-                                            </div>
-                                            <div>
-                                                <label className="block font-semibold mb-2">Phone</label>
-                                                <input className="w-full border rounded-md p-2 text-black" value={emergencyContact.phone} onChange={e => setEmergencyContact({ ...emergencyContact, phone: e.target.value })} placeholder="Emergency contact phone" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {/* Superannuation, TFN, bank details */}
-                                    <div className="border-t pt-6">
-                                        <h3 className="text-lg font-semibold mb-4">Superannuation</h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block font-semibold mb-2">Fund Name</label>
-                                                <input className="w-full border rounded-md p-2 text-black" value={superannuation.fundName} onChange={e => setSuperannuation({ ...superannuation, fundName: e.target.value })} placeholder="Enter fund name" />
-                                            </div>
-                                            <div>
-                                                <label className="block font-semibold mb-2">Member Number</label>
-                                                <input className="w-full border rounded-md p-2 text-black" value={superannuation.memberNumber} onChange={e => setSuperannuation({ ...superannuation, memberNumber: e.target.value })} placeholder="Enter member number" />
+                                            <h3 className="text-lg font-semibold mb-4">Emergency Contact</h3>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block font-semibold mb-2">Contact Name</label>
+                                                    <input 
+                                                        className={`w-full border rounded-md p-2 text-black ${
+                                                            emergencyContact.name ? (validateName(emergencyContact.name) ? 'border-green-500' : 'border-red-500') : ''
+                                                        }`}
+                                                        value={emergencyContact.name} 
+                                                        onChange={e => setEmergencyContact({ ...emergencyContact, name: e.target.value })} 
+                                                        placeholder="Emergency contact name" 
+                                                    />
+                                                    {emergencyContact.name && !validateName(emergencyContact.name) && (
+                                                        <p className="text-red-500 text-sm mt-1">Please enter a valid name</p>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <label className="block font-semibold mb-2">Contact Phone</label>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-1 px-3 py-2 bg-gray-50 border rounded-l-md">
+                                                            <span className="text-lg">🇦🇺</span>
+                                                            <span className="text-gray-600">+61</span>
+                                                        </div>
+                                                        <input 
+                                                            className={`flex-1 border rounded-r-md p-2 text-black ${
+                                                                emergencyContact.phone ? (validatePhone(emergencyContact.phone) ? 'border-green-500' : 'border-red-500') : ''
+                                                            }`}
+                                                            value={emergencyContact.phone} 
+                                                            onChange={e => setEmergencyContact({ ...emergencyContact, phone: e.target.value })} 
+                                                            placeholder="Enter phone number" 
+                                                        />
+                                                    </div>
+                                                    {emergencyContact.phone && !validatePhone(emergencyContact.phone) && (
+                                                        <p className="text-red-500 text-sm mt-1">Please enter a valid Australian phone number</p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="border-t pt-6">
-                                        <h3 className="text-lg font-semibold mb-4">TFN</h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                                        <div>
+                                            <h3 className="text-lg font-semibold mb-4">Tax File Number</h3>
                                             <div>
                                                 <label className="block font-semibold mb-2">TFN</label>
-                                                <input className="w-full border rounded-md p-2 text-black" value={tfn.number} onChange={e => setTfn({ ...tfn, number: e.target.value })} placeholder="Enter TFN" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="border-t pt-6">
-                                        <h3 className="text-lg font-semibold mb-4">Bank Details</h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block font-semibold mb-2">Account Name</label>
-                                                <input className="w-full border rounded-md p-2 text-black" value={bankDetails.accountName} onChange={e => setBankDetails({ ...bankDetails, accountName: e.target.value })} placeholder="Enter account name" />
-                                            </div>
-                                            <div>
-                                                <label className="block font-semibold mb-2">BSB</label>
-                                                <input className="w-full border rounded-md p-2 text-black" value={bankDetails.bsb} onChange={e => setBankDetails({ ...bankDetails, bsb: e.target.value })} placeholder="Enter BSB" />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block font-semibold mb-2">Account Number</label>
-                                                <input className="w-full border rounded-md p-2 text-black" value={bankDetails.accountNumber} onChange={e => setBankDetails({ ...bankDetails, accountNumber: e.target.value })} placeholder="Enter account number" />
+                                                <input 
+                                                    className={`w-full border rounded-md p-2 text-black ${
+                                                        tfn.number ? (validateTFN(tfn.number) ? 'border-green-500' : 'border-red-500') : ''
+                                                    }`}
+                                                    value={tfn.number} 
+                                                    onChange={e => setTfn({ number: e.target.value })} 
+                                                    placeholder="Enter your TFN" 
+                                                />
+                                                {tfn.number && !validateTFN(tfn.number) && (
+                                                    <p className="text-red-500 text-sm mt-1">Please enter a valid TFN</p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -461,66 +691,18 @@ export default function ProfileCompletion() {
 
                             {activeTab === "Certificates" && (
                                 <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8 flex flex-col gap-8 text-black">
-                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                                        <input
-                                            type="checkbox"
-                                            id="fit2work"
-                                            checked={fit2work}
-                                            onChange={(e) => setFit2work(e.target.checked)}
-                                            className="w-5 h-5 text-[#67b5b5] border-gray-300 rounded focus:ring-[#67b5b5]"
-                                        />
-                                        <label htmlFor="fit2work" className="text-lg font-semibold">
-                                            I confirm that I have a valid Fit2Work check
-                                        </label>
+                                    <div className="text-center">
+                                        <h3 className="text-lg font-semibold mb-4">Certificates</h3>
+                                        <p className="text-gray-600">No certificates required at this time.</p>
                                     </div>
-                                    <p className="text-gray-600">
-                                        You must have a valid Fit2Work check to work in aged care. Please ensure your check is up to date.
-                                    </p>
+                                </div>
+                            )}
 
-                                    <div className="border-t pt-6">
-                                        <h3 className="text-lg font-semibold mb-4">Additional Documents</h3>
-                                        <div className="space-y-4">
-                                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                                                <button
-                                                    onClick={() => fileInputRef.current?.click()}
-                                                    className="px-4 py-2 bg-[#67b5b5] text-white rounded-md hover:bg-[#4a9e9e] flex items-center gap-2"
-                                                >
-                                                    <DocumentIcon className="w-5 h-5" />
-                                                    Upload Document
-                                                </button>
-                                                <input
-                                                    type="file"
-                                                    ref={fileInputRef}
-                                                    onChange={handleDocumentUpload}
-                                                    className="hidden"
-                                                    multiple
-                                                />
-                                            </div>
-                                            {additionalDocuments.length > 0 && (
-                                                <div className="mt-4">
-                                                    <h4 className="font-medium mb-2">Uploaded Documents:</h4>
-                                                    <ul className="space-y-2">
-                                                        {additionalDocuments.map((doc, index) => (
-                                                            <li key={index} className="flex items-center justify-between gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-md">
-                                                                <div className="flex items-center gap-2">
-                                                                    <DocumentIcon className="w-4 h-4" />
-                                                                    <span className="truncate">{doc.name}</span>
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => removeDocument(index)}
-                                                                    className="text-red-500 hover:text-red-600 p-1 rounded-full hover:bg-red-50"
-                                                                    title="Remove document"
-                                                                >
-                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                                                    </svg>
-                                                                </button>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                        </div>
+                            {activeTab === "Agreements" && (
+                                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8 flex flex-col gap-8 text-black">
+                                    <div className="text-center">
+                                        <h3 className="text-lg font-semibold mb-4">Agreements</h3>
+                                        <p className="text-gray-600">No agreements required at this time.</p>
                                     </div>
                                 </div>
                             )}
@@ -529,18 +711,36 @@ export default function ProfileCompletion() {
                                 <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8 flex flex-col gap-8 text-black">
                                     <div className="text-center">
                                         <h3 className="text-xl font-semibold mb-4">Review Your Information</h3>
+                                        {submissionStatus.type && (
+                                            <div className={`mb-4 p-4 rounded-md ${
+                                                submissionStatus.type === 'success' 
+                                                    ? 'bg-green-100 text-green-700' 
+                                                    : submissionStatus.type === 'error'
+                                                    ? 'bg-red-100 text-red-700'
+                                                    : 'bg-blue-100 text-blue-700'
+                                            }`}>
+                                                {submissionStatus.message}
+                                            </div>
+                                        )}
                                         <p className="text-gray-600 mb-8">
                                             Please review all your information before submitting. You can go back to previous tabs to make changes.
                                         </p>
                                         <button
                                             onClick={handleFinish}
-                                            disabled={!allFilled}
-                                            className={`px-8 py-3 rounded-md text-white font-medium ${allFilled
+                                            disabled={!allFilled || submissionStatus.type === 'success'}
+                                            className={`px-8 py-3 rounded-md text-white font-medium ${
+                                                allFilled && submissionStatus.type !== 'success'
                                                     ? "bg-[#67b5b5] hover:bg-[#4a9e9e]"
                                                     : "bg-gray-300 cursor-not-allowed"
-                                                }`}
+                                            }`}
                                         >
-                                            Complete Profile
+                                            {submissionStatus.type === 'success' 
+                                                ? 'Profile Created!' 
+                                                : submissionStatus.type === 'error'
+                                                ? 'Try Again'
+                                                : submissionStatus.message === 'Creating your profile...'
+                                                ? 'Creating Profile...'
+                                                : 'Submit Profile'}
                                         </button>
                                     </div>
                                 </div>

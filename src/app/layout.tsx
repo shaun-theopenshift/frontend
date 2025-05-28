@@ -17,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <UserProvider loginUrl="/api/auth/login" profileUrl="/api/auth/me">
+        <UserProvider loginUrl="/api/auth/login?audience=https://api.theopenshift.com" profileUrl="/api/auth/me">
           {children}
         </UserProvider>
       </body>
