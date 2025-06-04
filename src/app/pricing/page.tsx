@@ -88,7 +88,7 @@ export default function Pricing() {
       <Navigation />
       
       {/* Pricing Header */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#e6f2f2] to-white">
+      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-brand-bgLight to-white">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-6">
             Simple, Transparent Pricing
@@ -99,7 +99,7 @@ export default function Pricing() {
           
           {/* Billing Toggle */}
           <div className="flex justify-center items-center space-x-4 mb-12">
-            <span className={`text-lg ${billingCycle === 'monthly' ? 'text-[#67b5b5]' : 'text-gray-600'}`}>
+            <span className={`text-lg ${billingCycle === 'monthly' ? 'text-brand-dark' : 'text-gray-600'}`}>
               Monthly
             </span>
             <button
@@ -112,8 +112,8 @@ export default function Pricing() {
                 }`}
               />
             </button>
-            <span className={`text-lg ${billingCycle === 'yearly' ? 'text-[#67b5b5]' : 'text-gray-600'}`}>
-              Yearly <span className="text-sm text-[#67b5b5]">(Save 20%)</span>
+            <span className={`text-lg ${billingCycle === 'yearly' ? 'text-brand-dark' : 'text-gray-600'}`}>
+              Yearly <span className="text-sm text-brand-dark">(Save 20%)</span>
             </span>
           </div>
         </div>
@@ -137,20 +137,20 @@ export default function Pricing() {
                   <ul className="space-y-4 mb-8">
                     {pricingPlans.organization.basic.features.map((feature) => (
                       <li key={feature} className="flex items-start">
-                        <CheckIcon className="h-6 w-6 text-[#67b5b5] mr-2" />
+                        <CheckIcon className="h-6 w-6 text-brand-dark mr-2" />
                         <span className="text-gray-600">{feature}</span>
                       </li>
                     ))}
                   </ul>
-                  <button className="w-full py-3 px-4 bg-[#67b5b5] text-white rounded-md hover:bg-[#4a9e9e] transition-colors">
+                  <button className="w-full py-3 px-4 bg-brand-dark text-white rounded-md hover:bg-brand-accent transition-colors">
                     Get Started
                   </button>
                 </div>
 
                 {/* Premium Plan */}
-                <div className="bg-white rounded-2xl shadow-sm border-2 border-[#67b5b5] p-8 relative">
+                <div className="bg-white rounded-2xl shadow-sm border-2 border-brand-dark p-8 relative">
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-[#67b5b5] text-white px-4 py-1 rounded-full text-sm font-medium">
+                    <span className="bg-brand-dark text-white px-4 py-1 rounded-full text-sm font-medium">
                       Most Popular
                     </span>
                   </div>
@@ -162,12 +162,12 @@ export default function Pricing() {
                   <ul className="space-y-4 mb-8">
                     {pricingPlans.organization.premium.features.map((feature) => (
                       <li key={feature} className="flex items-start">
-                        <CheckIcon className="h-6 w-6 text-[#67b5b5] mr-2" />
+                        <CheckIcon className="h-6 w-6 text-brand-dark mr-2" />
                         <span className="text-gray-600">{feature}</span>
                       </li>
                     ))}
                   </ul>
-                  <button className="w-full py-3 px-4 bg-[#67b5b5] text-white rounded-md hover:bg-[#4a9e9e] transition-colors">
+                  <button className="w-full py-3 px-4 bg-brand-dark text-white rounded-md hover:bg-brand-accent transition-colors">
                     Get Started
                   </button>
                 </div>
@@ -187,18 +187,18 @@ export default function Pricing() {
                   <ul className="space-y-4 mb-8">
                     {pricingPlans.staff.basic.features.map((feature) => (
                       <li key={feature} className="flex items-start">
-                        <CheckIcon className="h-6 w-6 text-[#67b5b5] mr-2" />
+                        <CheckIcon className="h-6 w-6 text-brand-dark mr-2" />
                         <span className="text-gray-600">{feature}</span>
                       </li>
                     ))}
                   </ul>
-                  <button className="w-full py-3 px-4 bg-[#67b5b5] text-white rounded-md hover:bg-[#4a9e9e] transition-colors">
+                  <button className="w-full py-3 px-4 bg-brand-dark text-white rounded-md hover:bg-brand-accent transition-colors">
                     Get Started
                   </button>
                 </div>
 
                 {/* Premium Plan */}
-                <div className="bg-white rounded-2xl shadow-sm border-2 border-[#67b5b5] p-8">
+                <div className="bg-white rounded-2xl shadow-sm border-2 border-brand-dark p-8">
                   <h3 className="text-2xl font-bold text-gray-900 mb-4">Premium</h3>
                   <div className="mb-6">
                     <span className="text-4xl font-bold text-gray-900">${pricingPlans.staff.premium[billingCycle]}</span>
@@ -207,12 +207,12 @@ export default function Pricing() {
                   <ul className="space-y-4 mb-8">
                     {pricingPlans.staff.premium.features.map((feature) => (
                       <li key={feature} className="flex items-start">
-                        <CheckIcon className="h-6 w-6 text-[#67b5b5] mr-2" />
+                        <CheckIcon className="h-6 w-6 text-brand-dark mr-2" />
                         <span className="text-gray-600">{feature}</span>
                       </li>
                     ))}
                   </ul>
-                  <button className="w-full py-3 px-4 bg-[#67b5b5] text-white rounded-md hover:bg-[#4a9e9e] transition-colors">
+                  <button className="w-full py-3 px-4 bg-brand-dark text-white rounded-md hover:bg-brand-accent transition-colors">
                     Get Started
                   </button>
                 </div>
@@ -228,19 +228,19 @@ export default function Pricing() {
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Frequently Asked Questions</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="bg-white rounded-lg p-6">
-              <h3 className="text-xl font-semibold mb-4 text-[#67b5b5]">Can I change plans later?</h3>
+              <h3 className="text-xl font-semibold mb-4 text-brand-dark">Can I change plans later?</h3>
               <p className="text-gray-600">Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle.</p>
             </div>
             <div className="bg-white rounded-lg p-6">
-              <h3 className="text-xl font-semibold mb-4 text-[#67b5b5]">What payment methods do you accept?</h3>
+              <h3 className="text-xl font-semibold mb-4 text-brand-dark">What payment methods do you accept?</h3>
               <p className="text-gray-600">We accept all major credit cards, PayPal, and bank transfers for annual plans.</p>
             </div>
             <div className="bg-white rounded-lg p-6">
-              <h3 className="text-xl font-semibold mb-4 text-[#67b5b5]">Is there a free trial?</h3>
+              <h3 className="text-xl font-semibold mb-4 text-brand-dark">Is there a free trial?</h3>
               <p className="text-gray-600">Yes, we offer a 14-day free trial for all premium plans. No credit card required.</p>
             </div>
             <div className="bg-white rounded-lg p-6">
-              <h3 className="text-xl font-semibold mb-4 text-[#67b5b5]">Do you offer refunds?</h3>
+              <h3 className="text-xl font-semibold mb-4 text-brand-dark">Do you offer refunds?</h3>
               <p className="text-gray-600">Yes, we offer a 30-day money-back guarantee for all paid plans.</p>
             </div>
           </div>

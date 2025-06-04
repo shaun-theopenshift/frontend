@@ -19,3 +19,7 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.react-calendar, .react-calendar * {
+  color: #000 !important;
+}

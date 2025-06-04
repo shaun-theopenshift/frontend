@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import LoadingScreen from '../../components/LoadingScreen';
 
 const TABS = [
     { label: "Profile", icon: <UserCircleIcon className="w-4 h-4 mr-1.5" /> },
@@ -393,19 +394,23 @@ export default function ProfileCompletion() {
         }
     };
 
+    if (authLoading) {
+        return <LoadingScreen />;
+    }
+
     if (loading) {
         return <div className="min-h-screen flex items-center justify-center text-lg">Loading profile for editing...</div>;
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-gradient-to-tr from-[#fafbfc] via-[#e6f2f2] to-[#b2e0e0]">
+        <div className="min-h-screen flex flex-col bg-gradient-to-tr from-brand-bgLight via-brand-light to-brand-mint">
             <main className="flex-1 flex flex-col items-center relative">
                 {/* Lively Background for Staff (distinct from organization) */}
                 <div className="absolute inset-0 -z-10 pointer-events-none">
-                    <div className="w-full h-full bg-gradient-to-tr from-[#fafbfc] via-[#e6f2f2] to-[#b2e0e0] opacity-90"></div>
-                    <div className="absolute top-10 right-0 w-80 h-80 bg-[#67b5b5] rounded-3xl blur-2xl opacity-20 animate-pulse" style={{transform: 'translate(30%,-20%)'}}></div>
-                    <div className="absolute bottom-0 left-0 w-96 h-40 bg-[#b2e0e0] rounded-full blur-3xl opacity-20 animate-pulse" style={{transform: 'translate(-20%,30%)'}}></div>
-                    <div className="absolute bottom-10 right-1/3 w-40 h-40 bg-[#67b5b5] rounded-full blur-2xl opacity-10 animate-pulse" style={{}}></div>
+                    <div className="w-full h-full bg-gradient-to-tr from-brand-bgLight via-brand-light to-brand-mint opacity-90"></div>
+                    <div className="absolute top-10 right-0 w-80 h-80 bg-brand-dark rounded-3xl blur-2xl opacity-20 animate-pulse" style={{transform: 'translate(30%,-20%)'}}></div>
+                    <div className="absolute bottom-0 left-0 w-96 h-40 bg-brand-mint rounded-full blur-3xl opacity-20 animate-pulse" style={{transform: 'translate(-20%,30%)'}}></div>
+                    <div className="absolute bottom-10 right-1/3 w-40 h-40 bg-brand-dark rounded-full blur-2xl opacity-10 animate-pulse" style={{}}></div>
                 </div>
                 {/* Navbar with logo and avatar */}
                 <nav className="w-full flex justify-between items-center h-16 px-4 sm:px-8 bg-white border-b relative z-10">
@@ -428,7 +433,7 @@ export default function ProfileCompletion() {
                                 <div className="flex flex-col items-center justify-center px-3 py-2">
                                     <a
                                         href="/api/auth/logout"
-                                        className="px-3 py-2 rounded-md bg-gray-200 text-[#67b5b5] font-medium hover:bg-gray-300 transition w-full text-center"
+                                        className="px-3 py-2 rounded-md bg-gray-200 text-brand-dark font-medium hover:bg-gray-300 transition w-full text-center"
                                     >
                                         Sign out
                                     </a>

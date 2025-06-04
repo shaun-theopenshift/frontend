@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { ArrowRightIcon, CalendarIcon, UserGroupIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 import Navigation from './components/Navigation';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('organization');
+  const { user, isLoading } = useUser();
 
   return (
     <main className="flex min-h-screen flex-col">
@@ -57,7 +59,7 @@ export default function Home() {
       </section>
       */}
       {/* Hero Section */}
-<section className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#e6f2f2] to-white">
+<section className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-brand-bgLight to-white">
   <div className="max-w-7xl mx-auto">
     <div className="flex flex-col-reverse lg:flex-row items-center justify-between gap-8 sm:gap-12">
 
@@ -65,7 +67,7 @@ export default function Home() {
       <div className="text-center lg:text-left flex-1 w-full">
         <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-2">
           Bridging Aged Care Organizations and Staff through Meaningful{' '}
-          <span className="text-[#67b5b5]">Opportunities</span>
+          <span className="text-brand-dark">Opportunities</span>
         </h1>
 
         <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8 max-w-3xl mx-auto lg:mx-0">
@@ -74,19 +76,32 @@ export default function Home() {
         </p>
 
         <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-3 sm:gap-4">
-          <a
-            href="/api/auth/login?screen_hint=signup"
-            className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e] flex items-center justify-center"
-          >
-            Sign Up
-            <ArrowRightIcon className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
-          </a>
-          <a
-            href="/api/auth/login"
-            className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2]"
-          >
-            Log In
-          </a>
+          {!isLoading && (
+            user ? (
+              <a
+                href="/profile"
+                className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-medium text-white bg-brand-dark rounded-md hover:bg-brand-accent flex items-center justify-center"
+              >
+                Profile
+              </a>
+            ) : (
+              <>
+                <a
+                  href="/api/auth/login?screen_hint=signup"
+                  className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-medium text-white bg-brand-dark rounded-md hover:bg-brand-mint flex items-center justify-center"
+                >
+                  Sign Up
+                  <ArrowRightIcon className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
+                </a>
+                <a
+                  href="/api/auth/login"
+                  className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-medium text-brand-dark border border-brand-dark rounded-md hover:bg-brand-bgLight"
+                >
+                  Log In
+                </a>
+              </>
+            )
+          )}
         </div>
       </div>
 
@@ -113,17 +128,17 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-              <CalendarIcon className="w-12 h-12 text-[#67b5b5] mb-4" />
+              <CalendarIcon className="w-12 h-12 text-brand-dark mb-4" />
               <h3 className="text-xl font-semibold mb-2 text-gray-900">Easy Shift Management</h3>
               <p className="text-gray-600">Post and manage shifts effortlessly with our intuitive platform.</p>
             </div>
             <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-              <UserGroupIcon className="w-12 h-12 text-[#67b5b5] mb-4" />
+              <UserGroupIcon className="w-12 h-12 text-brand-dark mb-4" />
               <h3 className="text-xl font-semibold mb-2 text-gray-900">Qualified Staff</h3>
               <p className="text-gray-600">Access a pool of verified and qualified aged care professionals.</p>
             </div>
             <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-              <BuildingOfficeIcon className="w-12 h-12 text-[#67b5b5] mb-4" />
+              <BuildingOfficeIcon className="w-12 h-12 text-brand-dark mb-4" />
               <h3 className="text-xl font-semibold mb-2 text-gray-900">Organization Solutions</h3>
               <p className="text-gray-600">Comprehensive tools for aged care facilities to manage their workforce.</p>
             </div>
@@ -139,11 +154,11 @@ export default function Home() {
             <p className="mt-4 text-xl text-gray-600">Simple steps to get started</p>
 
             {/* Toggle Buttons */}
-            <div className=" flex justify-center space-x-8 mt-8">
+            <div className="flex justify-center space-x-8 mt-8">
               <button
                 className={`text-lg font-medium pb-2 transition-all duration-200 ${activeTab === 'staff'
-                  ? 'text-[#67b5b5] border-b-2 border-[#67b5b5]'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'text-brand-dark border-b-2 border-brand-dark'
+                  : 'text-gray-600 hover:text-brand-dark'
                   }`}
                 onClick={() => setActiveTab('staff')}
               >
@@ -151,8 +166,8 @@ export default function Home() {
               </button>
               <button
                 className={`text-lg font-medium pb-2 transition-all duration-200 ${activeTab === 'organization'
-                  ? 'text-[#67b5b5] border-b-2 border-[#67b5b5]'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'text-brand-dark border-b-2 border-brand-dark'
+                  : 'text-gray-600 hover:text-brand-dark'
                   }`}
                 onClick={() => setActiveTab('organization')}
               >
@@ -165,26 +180,25 @@ export default function Home() {
           {activeTab === 'organization' && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="text-center ">
-                  <div className="w-16 h-16 bg-[#67b5b5] rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">1</div>
-                  <div className="h-60 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">1</div>
+                  <div className="h-60 bg-brand-bgLight rounded-lg mb-4 flex items-center justify-center">
                     <img src="/icons/svg_og_1.svg" alt="Create Profile" className="w-60 h-60" />
                   </div>
-
                   <h3 className="text-xl font-semibold mb-2 text-gray-900">Create Your Organization Profile</h3>
                   <p className="text-gray-600">Set up your organizations profile and specify your staffing needs.</p>
                 </div>
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-[#67b5b5] rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">2</div>
-                  <div className="h-60 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                  <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">2</div>
+                  <div className="h-60 bg-brand-bgLight rounded-lg mb-4 flex items-center justify-center">
                     <img src="/icons/svg_og_2.svg" alt="Create Profile" className="w-60 h-60" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2 text-gray-900">Post Shifts</h3>
                   <p className="text-gray-600">Create and manage shifts with specific requirements and schedules.</p>
                 </div>
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-[#67b5b5] rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">3</div>
-                  <div className="h-60 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                  <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">3</div>
+                  <div className="h-60 bg-brand-bgLight rounded-lg mb-4 flex items-center justify-center">
                     <img src="/icons/svg_og_3.svg" alt="Create Profile" className="w-60 h-60" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2 text-gray-900">Manage Your Workforce</h3>
@@ -192,7 +206,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="text-center mt-12">
-                <button className="px-8 py-3 text-lg font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2]">
+                <button className="px-8 py-3 text-lg font-medium text-brand-dark border border-brand-dark rounded-md hover:bg-brand-bgLight">
                   Know More
                 </button>
               </div>
@@ -203,24 +217,24 @@ export default function Home() {
           {activeTab === 'staff' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="w-16 h-16 bg-[#67b5b5] rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">1</div>
-                <div className="h-60 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">1</div>
+                <div className="h-60 bg-brand-bgLight rounded-lg mb-4 flex items-center justify-center">
                   <img src="/icons/svg_hiw_1.svg" alt="Create Profile" className="w-60 h-60" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-gray-900">Create Your Profile</h3>
                 <p className="text-gray-600">Sign up and complete your profile with your qualifications and preferences.</p>
               </div>
               <div className="text-center">
-                <div className="w-16 h-16 bg-[#67b5b5] rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">2</div>
-                <div className="h-60 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">2</div>
+                <div className="h-60 bg-brand-bgLight rounded-lg mb-4 flex items-center justify-center">
                   <img src="/icons/svg_hiw_2.svg" alt="Create Profile" className="w-60 h-60" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-gray-900">Browse Opportunities</h3>
                 <p className="text-gray-600">Find and apply for shifts that match your skills and availability.</p>
               </div>
               <div className="text-center">
-                <div className="w-16 h-16 bg-[#67b5b5] rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">3</div>
-                <div className="h-60 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">3</div>
+                <div className="h-60 bg-brand-bgLight rounded-lg mb-4 flex items-center justify-center">
                   <img src="/icons/svg_hiw_3.svg" alt="Create Profile" className="w-60 h-60" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-gray-900">Start Working</h3>
@@ -232,11 +246,11 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section id="contact" className="py-20 bg-[#67b5b5]">
+      <section id="contact" className="py-20 bg-brand-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">Ready to Get Started?</h2>
-          <p className="text-xl text-[#e6f2f2] mb-8">Join TheOpenShift today and transform how you manage aged care staffing.</p>
-          <button className="px-8 py-3 text-lg font-medium text-[#67b5b5] bg-white rounded-md hover:bg-[#f5f9f9]">
+          <p className="text-xl text-brand-bgLight mb-8">Join TheOpenShift today and transform how you manage aged care staffing.</p>
+          <button className="px-8 py-3 text-lg font-medium text-brand-dark bg-white rounded-md hover:bg-brand-bgLight">
             Sign Up Now
           </button>
         </div>

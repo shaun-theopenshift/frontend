@@ -37,7 +37,7 @@ export default function Navigation({ minimal = false }: { minimal?: boolean }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex-shrink-0">
-            <Link href="/" className="text-2xl font-bold text-[#67b5b5] hover:text-[#4a9e9e]">
+            <Link href="/" className="text-2xl font-bold text-brand-dark hover:text-brand-accent">
               TheOpenShift
             </Link>
           </div>
@@ -45,10 +45,10 @@ export default function Navigation({ minimal = false }: { minimal?: boolean }) {
           {/* Desktop Navigation */}
           {!minimal && (
             <div className="hidden md:flex space-x-8">
-              <a href="#features" className="text-gray-600 hover:text-gray-900">Features</a>
-              <a href="#how-it-works" className="text-gray-600 hover:text-gray-900">How it Works</a>
-              <a href="#contact" className="text-gray-600 hover:text-gray-900">Contact</a>
-              <Link href="/pricing" className="text-gray-600 hover:text-gray-900">Pricing</Link>
+              <a href="#features" className="text-gray-600 hover:text-brand-dark">Features</a>
+              <a href="#how-it-works" className="text-gray-600 hover:text-brand-dark">How it Works</a>
+              <a href="#contact" className="text-gray-600 hover:text-brand-dark">Contact</a>
+              <Link href="/pricing" className="text-gray-600 hover:text-brand-dark">Pricing</Link>
             </div>
           )}
 
@@ -60,7 +60,7 @@ export default function Navigation({ minimal = false }: { minimal?: boolean }) {
                   <div className="relative" ref={profileRef}>
                     <button
                       onClick={() => setIsProfileOpen(!isProfileOpen)}
-                      className="w-10 h-10 rounded-full overflow-hidden bg-[#67b5b5] text-white flex items-center justify-center font-semibold hover:bg-[#4a9e9e] transition-colors"
+                      className="w-10 h-10 rounded-full overflow-hidden bg-brand-dark text-white flex items-center justify-center font-semibold hover:bg-brand-accent transition-colors"
                     >
                       {user.picture ? (
                         <Image
@@ -79,13 +79,13 @@ export default function Navigation({ minimal = false }: { minimal?: boolean }) {
                         <div className="py-1">
                           <Link
                             href="/profile"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-bgLight"
                           >
                             Profile
                           </Link>
                           <a
                             href="/api/auth/logout"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-bgLight"
                           >
                             Sign out
                           </a>
@@ -98,13 +98,13 @@ export default function Navigation({ minimal = false }: { minimal?: boolean }) {
                     <>
                       <a
                         href="/api/auth/login?audience=https://api.theopenshift.com"
-                        className="px-4 py-2 text-sm font-medium text-[#67b5b5] hover:text-[#4a9e9e] rounded-md border border-[#67b5b5]"
+                        className="px-4 py-2 text-sm font-medium text-brand-dark hover:text-brand-accent rounded-md border border-brand-dark"
                       >
                         Log in
                       </a>
                       <div className="relative" ref={dropdownRef}>
                         <button
-                          className="px-4 py-2 text-sm font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e] flex items-center gap-1"
+                          className="px-4 py-2 text-sm font-medium text-white bg-brand-dark rounded-md hover:bg-brand-accent flex items-center gap-1"
                           onClick={() => setIsSignupOpen(!isSignupOpen)}
                           aria-haspopup="true"
                           aria-expanded={isSignupOpen}
@@ -118,13 +118,13 @@ export default function Navigation({ minimal = false }: { minimal?: boolean }) {
                               <div className="grid grid-cols-2 gap-4">
                                 <a
                                   href="/api/auth/login?screen_hint=signup&audience=https://api.theopenshift.com"
-                                  className="w-full px-4 py-3 text-sm font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e] transition-colors duration-200"
+                                  className="w-full px-4 py-3 text-sm font-medium text-white bg-brand-dark rounded-md hover:bg-brand-accent transition-colors duration-200"
                                 >
                                   Sign up as Organization
                                 </a>
                                 <a
                                   href="/api/auth/login?screen_hint=signup&audience=https://api.theopenshift.com"
-                                  className="w-full px-4 py-3 text-sm font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2] transition-colors duration-200"
+                                  className="w-full px-4 py-3 text-sm font-medium text-brand-dark border border-brand-dark rounded-md hover:bg-brand-bgLight transition-colors duration-200"
                                 >
                                   Sign up as Staff
                                 </a>
@@ -145,7 +145,7 @@ export default function Navigation({ minimal = false }: { minimal?: boolean }) {
             <div className="md:hidden flex items-center">
               <button
                 onClick={handleMobileMenuClick}
-                className="p-2 rounded-md text-gray-600 hover:bg-gray-100"
+                className="p-2 rounded-md text-gray-600 hover:bg-brand-bgLight"
                 aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
               >
                 {isMenuOpen ? (
@@ -162,10 +162,10 @@ export default function Navigation({ minimal = false }: { minimal?: boolean }) {
         {!minimal && (
           <div className={`md:hidden ${isMenuOpen ? 'block' : 'hidden'}`}>
             <div className="px-2 pt-2 pb-3 space-y-1">
-              <a href="#features" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900">Features</a>
-              <a href="#how-it-works" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900">How it Works</a>
-              <a href="#contact" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900">Contact</a>
-              <Link href="/pricing" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900">Pricing</Link>
+              <a href="#features" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-brand-dark">Features</a>
+              <a href="#how-it-works" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-brand-dark">How it Works</a>
+              <a href="#contact" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-brand-dark">Contact</a>
+              <Link href="/pricing" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-brand-dark">Pricing</Link>
             </div>
 
             <div className="pt-4 pb-3 border-t border-gray-200">
@@ -174,7 +174,7 @@ export default function Navigation({ minimal = false }: { minimal?: boolean }) {
                   {user ? (
                     <>
                       <div className="flex flex-col items-center justify-center px-3 py-2">
-                        <div className="w-16 h-16 rounded-full overflow-hidden bg-[#67b5b5] text-white flex items-center justify-center font-semibold mb-2">
+                        <div className="w-16 h-16 rounded-full overflow-hidden bg-brand-dark text-white flex items-center justify-center font-semibold mb-2">
                           {user.picture ? (
                             <Image
                               src={user.picture}
@@ -191,13 +191,13 @@ export default function Navigation({ minimal = false }: { minimal?: boolean }) {
                       </div>
                       <Link
                         href="/profile"
-                        className="block px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e]"
+                        className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-accent"
                       >
                         Profile
                       </Link>
                       <a
                         href="/api/auth/logout"
-                        className="block px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e]"
+                        className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-accent"
                       >
                         Sign out
                       </a>
@@ -207,13 +207,13 @@ export default function Navigation({ minimal = false }: { minimal?: boolean }) {
                       <>
                         <a
                           href="/api/auth/login?audience=https://api.theopenshift.com"
-                          className="block px-3 py-2 text-base font-medium text-[#67b5b5] hover:text-[#4a9e9e]"
+                          className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-accent"
                         >
                           Log in
                         </a>
                         <a
                           href="/api/auth/login?screen_hint=signup&audience=https://api.theopenshift.com"
-                          className="block px-3 py-2 text-base font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e]"
+                          className="block px-3 py-2 text-base font-medium text-white bg-brand-dark rounded-md hover:bg-brand-accent"
                         >
                           Sign up
                         </a>

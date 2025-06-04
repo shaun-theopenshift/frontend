@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CheckCircleIcon, BuildingOfficeIcon, UserGroupIcon, StarIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import { useUser } from '@auth0/nextjs-auth0/client';
+import LoadingScreen from '../../components/LoadingScreen';
 
 function GeoapifyAutocomplete({ value, onChange }: { value: string, onChange: (address: string) => void }) {
   const [input, setInput] = useState(value);
@@ -40,7 +41,7 @@ function GeoapifyAutocomplete({ value, onChange }: { value: string, onChange: (a
           {suggestions.map((s, i) => (
             <li
               key={s.properties.place_id}
-              className="px-4 py-2 hover:bg-[#e6f2f2] cursor-pointer text-sm"
+              className="px-4 py-2 hover:bg-brand-bgLight cursor-pointer text-sm"
               onClick={() => { onChange(s.properties.formatted); setInput(s.properties.formatted); setShowSuggestions(false); }}
             >
               {s.properties.formatted}
@@ -60,6 +61,8 @@ export default function OrganizationProfileCompletion() {
     phone: "",
     abn: "",
     email: "",
+    website: "",
+    description: "",
     abnStatus: "",
     abnEffectiveFrom: "",
   });
@@ -67,6 +70,11 @@ export default function OrganizationProfileCompletion() {
   const [isLoading, setIsLoading] = useState(false);
   const [abnError, setAbnError] = useState("");
   const router = useRouter();
+  const [submissionStatus, setSubmissionStatus] = useState({
+    type: null as 'success' | 'error' | null,
+    message: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Check user type and redirect if necessary
   useEffect(() => {
@@ -130,34 +138,184 @@ export default function OrganizationProfileCompletion() {
     }
   };
 
-  const handleFinish = () => {
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
+  // Add validation function
+  const validateForm = () => {
+    if (!organizationDetails.name) {
+      setSubmissionStatus({
+        type: 'error',
+        message: 'Organization name is required'
+      });
+      return false;
+    }
+    if (!organizationDetails.abn) {
+      setSubmissionStatus({
+        type: 'error',
+        message: 'ABN number is required'
+      });
+      return false;
+    }
+    if (!organizationDetails.address) {
+      setSubmissionStatus({
+        type: 'error',
+        message: 'Address is required'
+      });
+      return false;
+    }
+    if (!organizationDetails.phone) {
+      setSubmissionStatus({
+        type: 'error',
+        message: 'Phone number is required'
+      });
+      return false;
+    }
+    if (!validatePhone(organizationDetails.phone)) {
+      setSubmissionStatus({
+        type: 'error',
+        message: 'Please enter a valid Australian phone number'
+      });
+      return false;
+    }
+    if (!organizationDetails.website) {
+      setSubmissionStatus({
+        type: 'error',
+        message: 'Website is required'
+      });
+      return false;
+    }
+    if (!organizationDetails.description) {
+      setSubmissionStatus({
+        type: 'error',
+        message: 'Description is required'
+      });
+      return false;
+    }
+    // Email verification check - commented out for testing
+    // if (!user?.email_verified) {
+    //   setSubmissionStatus({
+    //     type: 'error',
+    //     message: 'Please verify your email address first'
+    //   });
+    //   return false;
+    // }
+    return true;
   };
 
+  const handleFinish = async () => {
+    if (!user) {
+      setSubmissionStatus({
+        type: 'error',
+        message: 'You must be logged in to submit your profile.'
+      });
+      return;
+    }
+
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSubmissionStatus({
+        type: null,
+        message: 'Creating your organization profile...'
+      });
+
+      // Get the session to access the token
+      const sessionResponse = await fetch('/api/auth/session');
+      const session = await sessionResponse.json();
+      
+      if (!session?.accessToken) {
+        throw new Error('No access token available');
+      }
+
+      const profileData = {
+        name: organizationDetails.name,
+        address: organizationDetails.address,
+        phone: organizationDetails.phone,
+        abn: organizationDetails.abn,
+        website: organizationDetails.website,
+        description: organizationDetails.description,
+      };
+
+      const response = await fetch('https://api.theopenshift.com/v1/orgs/org', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.accessToken}`,
+        },
+        body: JSON.stringify(profileData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create organization profile');
+      }
+
+      setSubmissionStatus({
+        type: 'success',
+        message: 'Organization profile created successfully!'
+      });
+      setShowToast(true);
+      setTimeout(() => {
+        setShowToast(false);
+        router.push('/profile/organization');
+      }, 3000);
+    } catch (error) {
+      console.error('Error creating organization profile:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      setSubmissionStatus({
+        type: 'error',
+        message: `Failed to create organization profile: ${errorMessage}. Please try again or contact support if the problem persists.`
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Update the banner to show validation errors
+  const getBannerContent = () => {
+    if (submissionStatus.type === 'success') {
+      return 'Your organization profile has been successfully created!';
+    }
+    if (submissionStatus.type === 'error') {
+      return submissionStatus.message;
+    }
+    return 'Your organization profile verification and completion is not finished!';
+  };
+
+  if (authLoading) {
+    return <LoadingScreen />;
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#e6f2f2] via-[#fafbfc] to-[#67b5b5]">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-brand-bgLight via-brand-light to-brand-dark">
       <main className="flex-1 flex flex-col items-center relative">
         {/* Lively Background */}
         <div className="absolute inset-0 -z-10 pointer-events-none">
-          <div className="w-full h-full bg-gradient-to-br from-[#e6f2f2] via-[#fafbfc] to-[#67b5b5] opacity-80"></div>
-          <div className="absolute top-0 left-0 w-72 h-72 bg-[#67b5b5] rounded-full blur-3xl opacity-20 animate-pulse" style={{transform: 'translate(-30%,-30%)'}}></div>
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#67b5b5] rounded-full blur-3xl opacity-10 animate-pulse" style={{transform: 'translate(30%,30%)'}}></div>
+          <div className="w-full h-full bg-gradient-to-br from-brand-bgLight via-brand-light to-brand-dark opacity-80"></div>
+          <div className="absolute top-0 left-0 w-72 h-72 bg-brand-dark rounded-full blur-3xl opacity-20 animate-pulse" style={{transform: 'translate(-30%,-30%)'}}></div>
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-brand-dark rounded-full blur-3xl opacity-10 animate-pulse" style={{transform: 'translate(30%,30%)'}}></div>
         </div>
         {/* Navbar with logo */}
         <nav className="w-full flex justify-between items-center h-16 px-4 sm:px-8 bg-white border-b relative z-10">
-          <div className="text-2xl font-bold text-[#67b5b5] tracking-tight">TheOpenShift</div>
+          <div className="text-2xl font-bold text-brand-dark tracking-tight">TheOpenShift</div>
           <button
-            className="hidden sm:inline-block px-4 py-2 bg-[#67b5b5] text-white rounded-md hover:bg-[#4a9e9e] ml-4"
+            className="hidden sm:inline-block px-4 py-2 bg-brand-dark text-white rounded-md hover:bg-brand-accent ml-4"
             onClick={() => router.push('/profile-completion/staff')}
           >
             Looking for Work?
           </button>
         </nav>
 
-        {/* Yellow Banner */}
-        <div className="w-full bg-yellow-300 text-yellow-900 text-center py-2 font-medium text-base shadow relative z-10" style={{ letterSpacing: 0.2 }}>
-          Your organization profile verification and completion is not finished!
+        {/* Dynamic Banner */}
+        <div className={`w-full text-center py-2 font-medium text-base shadow relative z-10 ${
+          submissionStatus.type === 'success' 
+            ? 'bg-green-300 text-green-900' 
+            : submissionStatus.type === 'error'
+            ? 'bg-red-300 text-red-900'
+            : 'bg-yellow-300 text-yellow-900'
+        }`} style={{ letterSpacing: 0.2 }}>
+          {getBannerContent()}
         </div>
 
         {/* Main Content: Two-column layout */}
@@ -177,7 +335,7 @@ export default function OrganizationProfileCompletion() {
                       placeholder="ABN number"
                     />
                     <button
-                      className="px-4 py-2 bg-[#67b5b5] text-white rounded-md hover:bg-[#4a9e9e] disabled:opacity-50"
+                      className="px-4 py-2 bg-brand-dark text-white rounded-md hover:bg-brand-accent disabled:opacity-50"
                       onClick={handleAbnLookup}
                       disabled={!organizationDetails.abn || isLoading}
                     >
@@ -235,6 +393,24 @@ export default function OrganizationProfileCompletion() {
                   </div>
                 </div>
                 <div>
+                  <label className="block font-semibold mb-2">Website</label>
+                  <input 
+                    className="w-full border rounded-md p-2 text-black" 
+                    value={organizationDetails.website} 
+                    onChange={e => setOrganizationDetails({ ...organizationDetails, website: e.target.value })} 
+                    placeholder="https://your-organization.com" 
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-2">Description</label>
+                  <textarea 
+                    className="w-full border rounded-md p-2 text-black min-h-[100px]" 
+                    value={organizationDetails.description} 
+                    onChange={e => setOrganizationDetails({ ...organizationDetails, description: e.target.value })} 
+                    placeholder="Tell us about your organization..."
+                  />
+                </div>
+                <div>
                   <label className="block font-semibold mb-2">Address</label>
                   <GeoapifyAutocomplete
                     value={organizationDetails.address || ''}
@@ -265,13 +441,16 @@ export default function OrganizationProfileCompletion() {
               <div className="mt-8 text-center">
                 <button
                   onClick={handleFinish}
-                  className="px-8 py-3 rounded-md text-white font-medium bg-[#67b5b5] hover:bg-[#4a9e9e]"
+                  disabled={isSubmitting}
+                  className={`px-8 py-3 rounded-md text-white font-medium bg-brand-dark hover:bg-brand-accent disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isSubmitting ? 'animate-pulse' : ''
+                  }`}
                 >
-                  Complete Organization Profile
+                  {isSubmitting ? 'Creating Profile...' : 'Complete Organization Profile'}
                 </button>
                 <div className="mt-6 sm:hidden flex justify-center">
                   <button
-                    className="px-4 py-2 bg-[#67b5b5] text-white rounded-md hover:bg-[#4a9e9e]"
+                    className="px-4 py-2 bg-brand-dark text-white rounded-md hover:bg-brand-accent"
                     onClick={() => router.push('/profile-completion/staff')}
                   >
                     Looking for Work?
@@ -283,27 +462,27 @@ export default function OrganizationProfileCompletion() {
           {/* Right: Perks/Benefits */}
           <div className="w-full md:w-1/2 flex flex-col justify-center items-center md:items-start">
             <div className="p-6 sm:p-10 flex flex-col gap-6 w-full">
-              <h2 className="text-2xl font-bold text-black mb-2">Start hiring with <span className="text-[#67b5b5]">TheOpenShift</span></h2>
+              <h2 className="text-2xl font-bold text-black mb-2">Start hiring with <span className="text-brand-dark">TheOpenShift</span></h2>
               <p className="text-lg text-gray-700 mb-4">Join 1,000+ businesses across Australia</p>
               <ul className="space-y-6">
                 <li className="flex items-start gap-4">
-                  <CheckCircleIcon className="w-10 h-10 text-[#67b5b5] mt-1" />
+                  <CheckCircleIcon className="w-10 h-10 text-brand-dark mt-1" />
                   <div>
-                    <span className="font-semibold text-[#67b5b5]">Instant access to available staff:</span>
+                    <span className="font-semibold text-brand-dark">Instant access to available staff:</span>
                     <span className="block text-gray-600">Unlock a pool of thousands of qualified, reliable, and comprehensively screened staff across various roles and locations.</span>
                   </div>
                 </li>
                 <li className="flex items-start gap-4">
-                  <StarIcon className="w-10 h-10 text-[#67b5b5] mt-1" />
+                  <StarIcon className="w-10 h-10 text-brand-dark mt-1" />
                   <div>
-                    <span className="font-semibold text-[#67b5b5]">Pay less for more:</span>
+                    <span className="font-semibold text-brand-dark">Pay less for more:</span>
                     <span className="block text-gray-600">Post a job ad for free to get workers applying within minutes, and set your own pricing to control how much workers are paid above modern awards.</span>
                   </div>
                 </li>
                 <li className="flex items-start gap-4">
-                  <BriefcaseIcon className="w-10 h-10 text-[#67b5b5] mt-1" />
+                  <BriefcaseIcon className="w-10 h-10 text-brand-dark mt-1" />
                   <div>
-                    <span className="font-semibold text-[#67b5b5]">You're in control:</span>
+                    <span className="font-semibold text-brand-dark">You're in control:</span>
                     <span className="block text-gray-600">Easily rehire favourite staff, block ones that are not suited for your needs, or let our smart algorithms choose the best candidates for you.</span>
                   </div>
                 </li>
