@@ -59,15 +59,16 @@ export default function Home() {
       </section>
       */}
       {/* Hero Section */}
-<section className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-brand-bgLight to-white">
+<section className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#2954bd]/100 to-white">
   <div className="max-w-7xl mx-auto">
     <div className="flex flex-col-reverse lg:flex-row items-center justify-between gap-8 sm:gap-12">
 
       {/* Hero Text Content */}
       <div className="text-center lg:text-left flex-1 w-full">
         <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-2">
-          Bridging Aged Care Organizations and Staff through Meaningful{' '}
-          <span className="text-brand-dark">Opportunities</span>
+          Thoughtful care for every life - powered by {' '}
+          <span className="text-brand-dark">purpose</span>{' '}
+           and<span className="text-brand-dark">{' '}intelligence</span>
         </h1>
 
         <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8 max-w-3xl mx-auto lg:mx-0">
@@ -108,9 +109,9 @@ export default function Home() {
       {/* SVG Illustration – now visible on all screen sizes and on top in mobile */}
       <div className="flex-1 w-full">
         <img
-          src="/illus.png"
+          src="/illus1.png"
           alt="TheOpenShift Illustration"
-          className="w-full h-auto max-w-lg mx-auto"
+          className="w-full h-auto max-w-lg mx-auto rounded-3xl"
         />
       </div>
       
@@ -182,7 +183,7 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="text-center">
                   <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">1</div>
-                  <div className="h-60 bg-brand-bgLight rounded-lg mb-4 flex items-center justify-center">
+                  <div className="h-60 rounded-lg mb-4 flex items-center justify-center">
                     <img src="/icons/svg_og_1.svg" alt="Create Profile" className="w-60 h-60" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2 text-gray-900">Create Your Organization Profile</h3>
@@ -190,7 +191,7 @@ export default function Home() {
                 </div>
                 <div className="text-center">
                   <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">2</div>
-                  <div className="h-60 bg-brand-bgLight rounded-lg mb-4 flex items-center justify-center">
+                  <div className="h-60 rounded-lg mb-4 flex items-center justify-center">
                     <img src="/icons/svg_og_2.svg" alt="Create Profile" className="w-60 h-60" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2 text-gray-900">Post Shifts</h3>
@@ -198,7 +199,7 @@ export default function Home() {
                 </div>
                 <div className="text-center">
                   <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">3</div>
-                  <div className="h-60 bg-brand-bgLight rounded-lg mb-4 flex items-center justify-center">
+                  <div className="h-60 rounded-lg mb-4 flex items-center justify-center">
                     <img src="/icons/svg_og_3.svg" alt="Create Profile" className="w-60 h-60" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2 text-gray-900">Manage Your Workforce</h3>
@@ -218,7 +219,7 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
                 <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">1</div>
-                <div className="h-60 bg-brand-bgLight rounded-lg mb-4 flex items-center justify-center">
+                <div className="h-60 rounded-lg mb-4 flex items-center justify-center">
                   <img src="/icons/svg_hiw_1.svg" alt="Create Profile" className="w-60 h-60" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-gray-900">Create Your Profile</h3>
@@ -226,7 +227,7 @@ export default function Home() {
               </div>
               <div className="text-center">
                 <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">2</div>
-                <div className="h-60 bg-brand-bgLight rounded-lg mb-4 flex items-center justify-center">
+                <div className="h-60  rounded-lg mb-4 flex items-center justify-center">
                   <img src="/icons/svg_hiw_2.svg" alt="Create Profile" className="w-60 h-60" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-gray-900">Browse Opportunities</h3>
@@ -234,7 +235,7 @@ export default function Home() {
               </div>
               <div className="text-center">
                 <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">3</div>
-                <div className="h-60 bg-brand-bgLight rounded-lg mb-4 flex items-center justify-center">
+                <div className="h-60 rounded-lg mb-4 flex items-center justify-center">
                   <img src="/icons/svg_hiw_3.svg" alt="Create Profile" className="w-60 h-60" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-gray-900">Start Working</h3>
@@ -257,7 +258,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
+      <footer className="bg-white text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>

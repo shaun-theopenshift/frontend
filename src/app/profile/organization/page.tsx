@@ -1,371 +1,297 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useUser } from '@auth0/nextjs-auth0/client';
-import { useRouter, usePathname } from 'next/navigation';
-import Image from 'next/image';
+import { useState, useEffect } from "react";
+import { useUser } from "@auth0/nextjs-auth0/client";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import {
+  PencilIcon,
+  Bars3Icon,
+  XMarkIcon,
   HomeIcon,
-  UserGroupIcon,
-  CalendarIcon,
-  DocumentTextIcon,
+  UsersIcon,
+  MagnifyingGlassIcon,
+  BriefcaseIcon,
+  ClipboardDocumentCheckIcon,
   Cog6ToothIcon,
-  ChartBarIcon,
-  BuildingOfficeIcon,
-  CheckCircleIcon,
-  XCircleIcon,
   ArrowRightOnRectangleIcon,
-} from '@heroicons/react/24/outline';
-import LoadingScreen from '../../components/LoadingScreen';
+} from "@heroicons/react/24/outline";
+import LoadingScreen from "../../components/LoadingScreen";
+import SidebarProfile from "../../components/SidebarProfile";
+import TopNav from "../../components/TopNav";
+import { usePathname } from "next/navigation";
 
 interface OrganizationProfile {
-  abn: string;
   name: string;
+  abn: string;
   address: string;
   phone: string;
   website: string;
   description: string;
-  user_id: string;
-  rating: number;
-  abn_status?: {
-    is_active: boolean;
-    valid_until?: string;
-  };
+  logo?: string;
+  services?: string[];
+  certifications?: string[];
 }
 
-const SIDEBAR_ITEMS = [
-  { label: "Dashboard", icon: <HomeIcon className="w-5 h-5" />, href: "/profile/organization" },
-  { label: "Staff", icon: <UserGroupIcon className="w-5 h-5" />, href: "/profile/organization/staff" },
-  { label: "Shifts", icon: <CalendarIcon className="w-5 h-5" />, href: "/profile/organization/shifts" },
-  { label: "Documents", icon: <DocumentTextIcon className="w-5 h-5" />, href: "/profile/organization/documents" },
-  { label: "Analytics", icon: <ChartBarIcon className="w-5 h-5" />, href: "/profile/organization/analytics" },
-  { label: "Settings", icon: <Cog6ToothIcon className="w-5 h-5" />, href: "/profile/organization/settings" },
-];
-
-export default function OrganizationDashboard() {
-  const { user, isLoading } = useUser();
+export default function OrganizationProfile() {
+  const { user, error: authError, isLoading: authLoading } = useUser();
   const router = useRouter();
-  const pathname = usePathname() || '';
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [organizationData, setOrganizationData] = useState<OrganizationProfile | null>(null);
+  const pathname = usePathname();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [abnStatus, setAbnStatus] = useState<string | null>(null);
-  const [abnEffectiveFrom, setAbnEffectiveFrom] = useState<string | null>(null);
-  const [abnLoading, setAbnLoading] = useState(false);
-  const [abnError, setAbnError] = useState("");
+  const [orgData, setOrgData] = useState<OrganizationProfile | null>(null);
+  const [abnStatus, setAbnStatus] = useState<"active" | "inactive" | null>(
+    null
+  );
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!authLoading && !user) {
       router.push("/api/auth/login");
       return;
     }
 
-    async function fetchOrganizationData() {
-      try {
-        const session = await fetch('/api/auth/session').then(res => res.json());
-        if (!session?.accessToken) {
-          setError("Not authenticated.");
-          return;
-        }
-
-        const res = await fetch('https://api.theopenshift.com/v1/orgs/me', {
-          headers: {
-            'Authorization': `Bearer ${session.accessToken}`,
-            'Accept': 'application/json',
-          },
-        });
-
-        if (!res.ok) {
-          if (res.status === 404) {
-            router.push("/role-selection");
-            return;
-          }
-          throw new Error(`Failed to fetch organization data: ${res.status}`);
-        }
-
-        const data = await res.json();
-        setOrganizationData(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Error fetching organization data");
-      } finally {
-        setLoading(false);
-      }
-    }
-
     if (user) {
-      fetchOrganizationData();
+      fetch("/api/auth/session")
+        .then((res) => res.json())
+        .then((session) => {
+          if (!session?.accessToken) throw new Error("No access token");
+          return fetch("https://api.theopenshift.com/v1/orgs/me", {
+            headers: {
+              Authorization: `Bearer ${session.accessToken}`,
+              Accept: "application/json",
+            },
+          });
+        })
+        .then((res) => res.json())
+        .then((data) => {
+          setOrgData(data);
+          // ABN status check
+          console.log("ABN status from API:", data.abn_status);
+          if (typeof data.abn_status === "string") {
+            setAbnStatus(data.abn_status === "active" ? "active" : "inactive");
+          } else if (typeof data.abn_status?.is_active === "boolean") {
+            setAbnStatus(data.abn_status.is_active ? "active" : "inactive");
+          } else {
+            setAbnStatus(null);
+          }
+        })
+        .catch((e) => {
+          console.error("Error fetching profile:", e);
+        })
+        .finally(() => setLoading(false));
     }
-  }, [user, isLoading, router]);
+  }, [user, authLoading, router]);
 
-  // ABN verification handler
-  const handleAbnLookup = async () => {
-    if (!organizationData?.abn) return;
-    setAbnLoading(true);
-    setAbnError("");
-    try {
-      const response = await fetch(`https://abr.business.gov.au/json/AbnDetails.aspx?callback=callback&abn=${encodeURIComponent(organizationData.abn)}&guid=${process.env.NEXT_PUBLIC_ABN_LOOKUP_GUID}`);
-      const text = await response.text();
-      const jsonStr = text.replace(/^callback\(|\)$/g, '');
-      const data = JSON.parse(jsonStr);
-      if (data.Abn) {
-        setAbnStatus(data.AbnStatus);
-        setAbnEffectiveFrom(data.AbnStatusEffectiveFrom);
-      } else {
-        setAbnStatus(null);
-        setAbnEffectiveFrom(null);
-        setAbnError("ABN not found or invalid");
-      }
-    } catch (error) {
-      setAbnError("Error looking up ABN");
-    } finally {
-      setAbnLoading(false);
-    }
-  };
-
-  if (isLoading || loading) {
+  if (authLoading || loading) {
     return <LoadingScreen />;
   }
 
-  if (error) {
-    return <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>;
+  if (!orgData) {
+    return <div>Error loading organization profile</div>;
   }
 
-  if (!organizationData) {
-    return <div className="min-h-screen flex items-center justify-center text-gray-600">No organization data found.</div>;
-  }
+  // Compose sidebar user for organization
+  const sidebarUser = orgData ? { name: orgData.name } : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile Sidebar */}
-      <div className={`fixed inset-0 bg-gray-600 bg-opacity-75 z-20 lg:hidden ${mobileSidebarOpen ? 'block' : 'hidden'}`}
-        onClick={() => setMobileSidebarOpen(false)}>
+    <div className="min-h-screen bg-white">
+      <TopNav onMobileMenu={() => setMobileMenuOpen(true)} />
+      <SidebarProfile userType="organization" user={sidebarUser} />
+      <div className="md:pl-72 pt-16"> {/* pt-16 for TopNav height, pl-72 for wider sidebar */}
+        {/* Mobile menu button is now in TopNav */}
+        {/* Approval Banner */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-rose-50 p-4 rounded-lg mt-4">
+            <p className="text-rose-700 text-sm">
+              Your profile isn't visible to Care Workers until your account is
+              approved
+            </p>
+          </div>
+
+          {/* Profile Header Card */}
+          <div className="bg-[#2954bd] text-white rounded-lg p-6 mt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+                  {orgData.name?.[0]?.toUpperCase() || "O"}
+                </div>
+                <div>
+                  <h1 className="text-2xl font-semibold">{orgData.name}</h1>
+                  <p className="text-white/80">Organization</p>
+                </div>
+              </div>
+              <Link
+                href="/profile/organization/edit"
+                className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-md flex items-center space-x-2"
+              >
+                <PencilIcon className="h-4 w-4" />
+                <span>Edit Profile</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* Main Content Sections */}
+          <div className="py-8">
+            {/* About Section 
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-black">
+                  About Organization
+                </h2>
+                <Link
+                  href="/profile/organization/edit"
+                  className="text-[#2954bd] text-sm hover:underline"
+                >
+                  Edit
+                </Link>
+              </div>
+              <p className="text-gray-600">
+                {orgData.description || "No description provided"}
+              </p>
+            </section>
+            */}
+
+            {/* Email Section */}
+
+            {/* Business Details */}
+            <section>
+              <div className="flex items-center justify-between mb-1 mt-6">
+                <h2 className="text-xl font-semibold text-black">
+                  Business Details
+                </h2>
+                <div className="flex items-center gap-1">
+                  <span
+                    className={`px-2 py-1 rounded text-sm ${
+                      abnStatus === "active"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    ABN {abnStatus === "active" ? "Active" : "Inactive"}
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <p className="text-gray-500 text-sm mb-1 font-semibold">ABN</p>
+                  <p className="text-gray-900">{orgData.abn}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-sm mb-1 font-semibold">Phone</p>
+                  <p className="text-gray-900">{orgData.phone}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-sm mb-1 font-semibold">Address</p>
+                  <p className="text-gray-900">{orgData.address}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-sm mb-1 font-semibold">Website</p>
+                  <p className="text-gray-900">
+                    {orgData.website || "Not provided"}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* Services 
+            <section>
+              <div className="flex items-center justify-between mb-4 mt-6">
+                <h2 className="text-xl font-semibold text-black">Services</h2>
+                <Link
+                  href="/profile/organization/edit"
+                  className="text-[#2954bd] text-sm hover:underline"
+                >
+                  Edit
+                </Link>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {orgData.services?.length ? (
+                  orgData.services.map((service, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 bg-[#e6f2f2] text-[#2954bd] rounded-full text-sm"
+                    >
+                      {service}
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-gray-500">No services listed</p>
+                )}
+              </div>
+            </section>
+            */}
+          </div>
+        </div>
       </div>
 
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="h-16 flex items-center justify-center border-b">
-          <div className="text-2xl font-bold text-brand-dark">TheOpenShift</div>
-        </div>
-        <nav className="mt-5 px-2 flex-1">
-          {SIDEBAR_ITEMS.map((item) => {
-            // Dashboard: exact match. Others: startsWith, but not for dashboard.
-            const isDashboard = item.href === '/profile/organization';
-            const isActive = isDashboard
-              ? pathname === '/profile/organization'
-              : pathname.startsWith(item.href) && item.href !== '/profile/organization';
-            return (
-              <a
-                key={item.label}
-                href={item.href}
-                className={`group flex items-center px-2 py-2 text-base font-medium rounded-md transition
-                  ${isActive ? 'bg-brand-bgLight text-brand-dark font-bold' : 'text-gray-600 hover:bg-brand-bgLight hover:text-brand-dark'}`}
-              >
-                {item.icon}
-                <span className="ml-3">{item.label}</span>
-              </a>
-            );
-          })}
-        </nav>
-        {/* Logout button at the bottom */}
-        <div className="absolute bottom-0 left-0 w-full p-4 border-t bg-white">
-          <a
-            href="/api/auth/logout"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-brand-dark text-white font-semibold hover:bg-brand-accent transition text-base"
-          >
-            <ArrowRightOnRectangleIcon className="h-5 w-5" />
-            Logout
-          </a>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="lg:pl-64">
-        {/* Top Navigation */}
-        <div className="sticky top-0 z-10 bg-white shadow">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex items-center">
-                <button
-                  type="button"
-                  className="lg:hidden px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-dark"
-                  onClick={() => setMobileSidebarOpen(true)}
-                >
-                  <span className="sr-only">Open sidebar</span>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-              </div>
-              {/* Removed Edit Profile button from top navbar */}
-              <div className="flex items-center"></div>
-            </div>
+      {/* Mobile menu overlay */}
+      <div className={`${mobileMenuOpen ? "block" : "hidden"} md:hidden`}>
+        <div
+          className="fixed inset-0 z-50 bg-white/80"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+        <div className="fixed inset-y-0 left-0 z-50 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10 pt-16">
+          <div className="flex items-center justify-between mb-4">
+            <Link href="/" className="-m-1.5 p-1.5">
+              <span className="text-2xl font-semibold text-[#2954bd]">
+                TheOpenShift
+              </span>
+            </Link>
+            <button
+              type="button"
+              className="-m-2.5 rounded-md p-2.5 text-gray-700"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <span className="sr-only">Close menu</span>
+              <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+            </button>
           </div>
-        </div>
-
-        {/* Dashboard Content */}
-        <div className="py-6">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Organization Profile Card */}
-            <div className="bg-white rounded-lg shadow px-5 py-6 sm:px-6 mb-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-16 h-16 rounded-full bg-brand-dark flex items-center justify-center">
-                      <BuildingOfficeIcon className="w-8 h-8 text-white" />
-                    </div>
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{organizationData.name}</h2>
-                    <p className="text-sm text-gray-500">{user?.email}</p>
-                  </div>
-                </div>
-                {/* Restore Edit Profile button here */}
-                <button
-                  onClick={() => router.push('/profile-completion/organization?edit=1')}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-brand-dark hover:bg-brand-accent"
+          {/* SidebarProfile nav items for mobile */}
+          <nav className="mt-6 space-y-1">
+            {[
+              { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
+              { name: "My Clients", href: "/clients", icon: UsersIcon },
+              { name: "Search Worker", href: "/search", icon: MagnifyingGlassIcon },
+              { name: "Manage Jobs", href: "/jobs", icon: BriefcaseIcon },
+              { name: "Compliance", href: "/compliance", icon: ClipboardDocumentCheckIcon },
+              { name: "Account", href: "/account", icon: Cog6ToothIcon },
+            ].map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`group flex items-center px-3 py-2 text-base font-medium rounded-md ${
+                    isActive
+                      ? "bg-[#e6f2f2] text-[#2954bd]"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
                 >
-                  Edit Profile
-                </button>
-              </div>
-
-              {/* Organization Details Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">ABN</h3>
-                    <div className="mt-1 flex items-center gap-2">
-                      <p className="text-base text-gray-900">{organizationData.abn}</p>
-                      {organizationData.abn_status ? (
-                        <span className={`ml-2 px-2 py-1 rounded text-xs font-semibold ${organizationData.abn_status.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                          {organizationData.abn_status.is_active ? 'Verified' : 'Not Verified'}
-                        </span>
-                      ) : (
-                        <span className="ml-2 px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-600">Unknown</span>
-                      )}
-                      {organizationData.abn_status?.valid_until && organizationData.abn_status.is_active && (
-                        <span className="ml-2 text-xs text-gray-500">(valid until {new Date(organizationData.abn_status.valid_until).toLocaleDateString()})</span>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Address</h3>
-                    <p className="mt-1 text-base text-gray-900">{organizationData.address}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Phone</h3>
-                    <p className="mt-1 text-base text-gray-900">{organizationData.phone}</p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Website</h3>
-                    <a 
-                      href={organizationData.website} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="mt-1 text-base text-brand-dark hover:text-brand-accent"
-                    >
-                      {organizationData.website}
-                    </a>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Description</h3>
-                    <p className="mt-1 text-base text-gray-900">{organizationData.description}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Rating</h3>
-                    <div className="mt-1 flex items-center">
-                      <div className="flex items-center">
-                        {[...Array(5)].map((_, i) => (
-                          <svg
-                            key={i}
-                            className={`h-5 w-5 ${
-                              i < Math.floor(organizationData.rating) ? 'text-yellow-400' : 'text-gray-300'
-                            }`}
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                        ))}
-                      </div>
-                      <span className="ml-2 text-sm text-gray-500">
-                        {typeof organizationData.rating === "number"
-                          ? organizationData.rating.toFixed(1)
-                          : "0.0"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <UserGroupIcon className="h-6 w-6 text-gray-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Total Staff</dt>
-                        <dd className="text-lg font-medium text-gray-900">0</dd>
-                      </dl>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <CalendarIcon className="h-6 w-6 text-gray-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Active Job Listings</dt>
-                        <dd className="text-lg font-medium text-gray-900">0</dd>
-                      </dl>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <ChartBarIcon className="h-6 w-6 text-gray-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Completed Shifts</dt>
-                        <dd className="text-lg font-medium text-gray-900">0</dd>
-                      </dl>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="mt-8">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Activity</h3>
-              <div className="mt-4 bg-white shadow overflow-hidden sm:rounded-md">
-                <ul className="divide-y divide-gray-200">
-                  <li className="px-6 py-4">
-                    <div className="text-sm text-gray-500">No recent activity</div>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
+                  <item.icon
+                    className={`mr-4 h-6 w-6 flex-shrink-0 ${
+                      isActive
+                        ? "text-[#2954bd]"
+                        : "text-gray-400 group-hover:text-gray-500"
+                    }`}
+                    aria-hidden="true"
+                  />
+                  {item.name}
+                </Link>
+              );
+            })}
+            {/* Logout button for mobile */}
+            <a
+              href="/api/auth/logout"
+              className="group flex items-center px-3 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-red-600 mt-4"
+            >
+              <ArrowRightOnRectangleIcon className="mr-4 h-6 w-6 flex-shrink-0 text-gray-400 group-hover:text-red-600" aria-hidden="true" />
+              Log out
+            </a>
+          </nav>
         </div>
-      </main>
+      </div>
     </div>
   );
-} 
+}

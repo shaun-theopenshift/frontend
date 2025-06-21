@@ -7,13 +7,15 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import LoadingScreen from '../../components/LoadingScreen';
+import { api, StaffProfile } from '@/utils/api';
+import ErrorToast from '@/app/components/ErrorToast';
+import InfoTooltip from '@/app/components/InfoTooltip';
+import { AU_STATES_SUBURBS, AU_STATE_LABELS } from '@/data/au-states-suburbs';
 
-const TABS = [
-    { label: "Profile", icon: <UserCircleIcon className="w-4 h-4 mr-1.5" /> },
-    { label: "Account", icon: <IdentificationIcon className="w-4 h-4 mr-1.5" /> },
-    { label: "Certificates", icon: <CheckBadgeIcon className="w-4 h-4 mr-1.5" /> },
-    { label: "Agreements", icon: <DocumentIcon className="w-4 h-4 mr-1.5" /> },
-    { label: "Submit", icon: <CheckCircleIcon className="w-4 h-4 mr-1.5" /> },
+const STEPS = [
+    { id: "Profile", label: "Personal Info", icon: <UserCircleIcon className="w-5 h-5" /> },
+    { id: "Account", label: "Account Details", icon: <IdentificationIcon className="w-5 h-5" /> },
+    { id: "Submit", label: "Review & Submit", icon: <CheckCircleIcon className="w-5 h-5" /> },
 ];
 
 interface Experience {
@@ -68,117 +70,6 @@ function calculateExperience(startDate: string, endDate: string, isCurrent: bool
     return result || 'Less than a month';
 }
 
-function GeoapifyAutocomplete({ value, onChange }: { value: string, onChange: (address: string) => void }) {
-    const [input, setInput] = useState(value);
-    const [suggestions, setSuggestions] = useState<any[]>([]);
-    const [showSuggestions, setShowSuggestions] = useState(false);
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-    useEffect(() => { setInput(value); }, [value]);
-
-    useEffect(() => {
-        if (!input) { setSuggestions([]); return; }
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        const apiKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY;
-        timeoutRef.current = setTimeout(() => {
-            fetch(`https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(input)}&limit=5&apiKey=${apiKey}`)
-                .then(res => res.json())
-                .then(data => setSuggestions(data.features || []));
-        }, 300);
-        return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
-    }, [input]);
-
-    return (
-        <div className="relative">
-            <input
-                className="w-full border rounded-md p-2 text-black"
-                value={input}
-                onChange={e => { setInput(e.target.value); setShowSuggestions(true); }}
-                onFocus={() => setShowSuggestions(true)}
-                placeholder="Start typing your street name..."
-                autoComplete="off"
-            />
-            {showSuggestions && suggestions.length > 0 && (
-                <ul className="absolute z-50 bg-white border rounded-md mt-1 w-full shadow-lg max-h-56 overflow-auto">
-                    {suggestions.map((s, i) => (
-                        <li
-                            key={s.properties.place_id}
-                            className="px-4 py-2 hover:bg-[#e6f2f2] cursor-pointer text-sm"
-                            onClick={() => { onChange(s.properties.formatted); setInput(s.properties.formatted); setShowSuggestions(false); }}
-                        >
-                            {s.properties.formatted}
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    );
-}
-
-const API_BASE_URL = "https://api.theopenshift.com";
-
-export async function apiRequest<T>(
-  endpoint: string,
-  method: "POST" | "PATCH" = "POST",
-  body?: any
-): Promise<T> {
-  try {
-    const session = await fetch("/api/auth/session").then((res) => res.json());
-    console.log("Session:", session);
-    if (!session?.accessToken) throw new Error("No access token available");
-
-    const url = `${API_BASE_URL}${endpoint}`;
-    const response = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Authorization": `Bearer ${session.accessToken}`,
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error response:', errorText);
-      if (errorText.includes('User already has a role assigned')) {
-        throw new Error('You have already completed your profile or have a role assigned. If you believe this is a mistake, please contact support.');
-      }
-      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
-    }
-
-    // Handle empty response
-    const text = await response.text();
-    return text ? JSON.parse(text) : {};
-  } catch (error) {
-    console.error('API Request Error:', error);
-    throw error;
-  }
-}
-
-interface StaffProfile {
-    fname: string;
-    lname: string;
-    address: string;
-    dob: string;
-    gender: string;
-    phone: string;
-    bio: string;
-    emergency_contact: string;
-    emergency_contact_phone: string;
-    skills: string[];
-    tfn: string;
-}
-
-const api = {
-  // Create user
-  updateStaffProfile: (data: Partial<StaffProfile>) =>
-    apiRequest<StaffProfile>('/v1/users/user', 'POST', data),
-
-  // Get current user profile
-  getProfile: () => apiRequest<StaffProfile>('/v1/users/me'),
-};
-
 export default function ProfileCompletion() {
     const { user, error, isLoading: authLoading } = useUser();
     const searchParams = useSearchParams();
@@ -213,6 +104,20 @@ export default function ProfileCompletion() {
     }>({ type: null, message: '' });
 
     const [skills, setSkills] = useState('');
+    const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+    const [skillsInput, setSkillsInput] = useState('');
+    const [skillsList, setSkillsList] = useState<string[]>([]);
+
+    const [errorToast, setErrorToast] = useState<{
+        message: string;
+        isVisible: boolean;
+    }>({
+        message: '',
+        isVisible: false
+    });
+
+    const [selectedState, setSelectedState] = useState('');
+    const [selectedSuburb, setSelectedSuburb] = useState('');
 
     // Add the profile picture handler
     const handleProfilePic = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -328,7 +233,9 @@ export default function ProfileCompletion() {
                         phone: profile.emergency_contact_phone || '',
                     });
                     setTfn({ number: profile.tfn || '' });
-                    setSkills(profile.skills ? profile.skills.join(', ') : '');
+                    const skillsArray = profile.skills || [];
+                    setSkillsList(skillsArray);
+                    setSkills(skillsArray.join(', '));
                 })
                 .catch(e => {
                     setSubmissionStatus({ type: 'error', message: 'Failed to load profile for editing.' });
@@ -337,12 +244,12 @@ export default function ProfileCompletion() {
         }
     }, [isEditMode, user]);
 
-    // Update the handleFinish function to map the data correctly
+    // Update the handleFinish function to use the new error toast
     const handleFinish = async () => {
         if (!user) {
-            setSubmissionStatus({
-                type: 'error',
-                message: 'You must be logged in to submit your profile.'
+            setErrorToast({
+                message: 'You must be logged in to submit your profile.',
+                isVisible: true
             });
             return;
         }
@@ -351,9 +258,7 @@ export default function ProfileCompletion() {
                 type: null,
                 message: isEditMode ? 'Updating your profile...' : 'Creating your profile...'
             });
-            const skillsArray = skills
-                ? skills.split(',').map(s => s.trim()).filter(Boolean)
-                : [];
+            const skillsArray = skillsList.map(s => s.trim()).filter(Boolean);
             const profileData: StaffProfile = {
                 fname: String(personalDetails.firstName),
                 lname: String(personalDetails.lastName),
@@ -370,7 +275,7 @@ export default function ProfileCompletion() {
             console.log('Sending profile data:', JSON.stringify(profileData, null, 2));
             let result;
             if (isEditMode) {
-                result = await apiRequest('/v1/users/user', 'PATCH', profileData);
+                result = await api.updateStaffProfile(profileData);
             } else {
                 result = await api.updateStaffProfile(profileData);
             }
@@ -387,11 +292,64 @@ export default function ProfileCompletion() {
         } catch (error: unknown) {
             console.error('Error creating profile:', error);
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            setErrorToast({
+                message: `Failed to ${isEditMode ? 'update' : 'create'} profile: ${errorMessage}. Please try again or contact support if the problem persists.`,
+                isVisible: true
+            });
             setSubmissionStatus({
                 type: 'error',
-                message: `Failed to ${isEditMode ? 'update' : 'create'} profile: ${errorMessage}. Please try again or contact support if the problem persists.`
+                message: ''
             });
         }
+    };
+
+    // Add function to check if a step is completed
+    const isStepCompleted = (stepId: string) => {
+        if (stepId === "Profile") {
+            return Boolean(
+                aboutMe && 
+                personalDetails.firstName && validateName(personalDetails.firstName) &&
+                personalDetails.lastName && validateName(personalDetails.lastName) &&
+                personalDetails.address && 
+                personalDetails.dob && validateDateOfBirth(personalDetails.dob) &&
+                personalDetails.gender &&
+                personalDetails.phone && validatePhone(personalDetails.phone) &&
+                skillsList.length > 0
+            );
+        }
+        if (stepId === "Account") {
+            return Boolean(
+                emergencyContact.name && validateName(emergencyContact.name) &&
+                emergencyContact.phone && validatePhone(emergencyContact.phone) &&
+                tfn.number && validateTFN(tfn.number)
+            );
+        }
+        return false;
+    };
+
+    // Update completed steps when form data changes
+    useEffect(() => {
+        const newCompletedSteps = STEPS.filter(step => isStepCompleted(step.id)).map(step => step.id);
+        setCompletedSteps(newCompletedSteps);
+    }, [aboutMe, personalDetails, emergencyContact, tfn, skillsList]);
+
+    // Add function to handle skills
+    const handleAddSkill = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && skillsInput.trim()) {
+            e.preventDefault();
+            const newSkill = skillsInput.trim();
+            if (!skillsList.includes(newSkill)) {
+                setSkillsList([...skillsList, newSkill]);
+                setSkills(skillsList.join(', ') + (skillsList.length ? ', ' : '') + newSkill);
+            }
+            setSkillsInput('');
+        }
+    };
+
+    const handleRemoveSkill = (skillToRemove: string) => {
+        const newSkillsList = skillsList.filter(skill => skill !== skillToRemove);
+        setSkillsList(newSkillsList);
+        setSkills(newSkillsList.join(', '));
     };
 
     if (authLoading) {
@@ -403,21 +361,14 @@ export default function ProfileCompletion() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-gradient-to-tr from-brand-bgLight via-brand-light to-brand-mint">
-            <main className="flex-1 flex flex-col items-center relative">
-                {/* Lively Background for Staff (distinct from organization) */}
-                <div className="absolute inset-0 -z-10 pointer-events-none">
-                    <div className="w-full h-full bg-gradient-to-tr from-brand-bgLight via-brand-light to-brand-mint opacity-90"></div>
-                    <div className="absolute top-10 right-0 w-80 h-80 bg-brand-dark rounded-3xl blur-2xl opacity-20 animate-pulse" style={{transform: 'translate(30%,-20%)'}}></div>
-                    <div className="absolute bottom-0 left-0 w-96 h-40 bg-brand-mint rounded-full blur-3xl opacity-20 animate-pulse" style={{transform: 'translate(-20%,30%)'}}></div>
-                    <div className="absolute bottom-10 right-1/3 w-40 h-40 bg-brand-dark rounded-full blur-2xl opacity-10 animate-pulse" style={{}}></div>
-                </div>
+        <div className="min-h-screen bg-white text-black">
+            <main className="flex-1 flex flex-col items-center">
                 {/* Navbar with logo and avatar */}
-                <nav className="w-full flex justify-between items-center h-16 px-4 sm:px-8 bg-white border-b relative z-10">
-                    <div className="text-2xl font-bold text-[#67b5b5] tracking-tight">TheOpenShift</div>
+                <nav className="w-full flex justify-between items-center h-16 px-4 sm:px-8 bg-white border-b shadow-sm">
+                    <div className="text-2xl font-bold text-[#2954bd] tracking-tight">TheOpenShift</div>
                     <div className="relative z-20" ref={avatarRef}>
                         <button
-                            className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden focus:outline-none focus:ring-2 focus:ring-[#67b5b5]"
+                            className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden focus:outline-none focus:ring-2 focus:ring-[#67b5b5] border border-gray-200"
                             onClick={() => setShowAvatarMenu((prev: boolean) => !prev)}
                             aria-label="Open user menu"
                             tabIndex={0}
@@ -433,7 +384,7 @@ export default function ProfileCompletion() {
                                 <div className="flex flex-col items-center justify-center px-3 py-2">
                                     <a
                                         href="/api/auth/logout"
-                                        className="px-3 py-2 rounded-md bg-gray-200 text-brand-dark font-medium hover:bg-gray-300 transition w-full text-center"
+                                        className="px-3 py-2 rounded-md bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition w-full text-center"
                                     >
                                         Sign out
                                     </a>
@@ -442,51 +393,123 @@ export default function ProfileCompletion() {
                         )}
                     </div>
                 </nav>
-                {/* Dynamic Banner */}
-                <div className={`w-full text-center py-2 font-medium text-base shadow relative z-5 ${
+
+                {/* Status Banner */}
+                {submissionStatus.type && (
+                    <div className={`w-full text-center py-3 font-medium text-sm ${
                     submissionStatus.type === 'success' 
-                        ? 'bg-green-300 text-green-900' 
+                            ? 'bg-green-50 text-green-700 border-b border-green-100' 
                         : submissionStatus.type === 'error'
-                        ? 'bg-red-300 text-red-900'
-                        : 'bg-yellow-300 text-yellow-900'
-                }`} style={{ letterSpacing: 0.2 }}>
-                    {submissionStatus.type === 'success' 
-                        ? 'Your profile has been successfully updated!'
-                        : submissionStatus.type === 'error'
-                        ? submissionStatus.message
-                        : 'Your profile verification and completion is not finished!'}
+                            ? 'bg-red-50 text-red-700 border-b border-red-100'
+                            : 'bg-blue-50 text-blue-700 border-b border-blue-100'
+                    }`}>
+                        {submissionStatus.message}
                 </div>
-                {/* Main Content Responsive Layout */}
-                <div className="flex-1 w-full max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-8 relative z-10">
-                    <div className="flex flex-col md:flex-row gap-8">
-                        {/* Sidebar */}
-                        <aside className="w-full md:w-64 flex-shrink-0 mb-6 md:mb-0">
-                            <div className="bg-white rounded-lg shadow-sm p-4 sticky top-24">
-                                <nav className="space-y-1">
-                                    {TABS.map((tab) => (
+                )}
+
+                {/* Progress Stepper */}
+                <div className="w-full bg-white border-b">
+                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="py-8">
+                            <div className="relative">
+                                {/* Progress Bar */}
+                                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -translate-y-1/2">
+                                    <div 
+                                        className="h-full bg-[#2954bd] transition-all duration-300"
+                                        style={{ 
+                                            width: `${(completedSteps.length / (STEPS.length - 1)) * 100}%`,
+                                            maxWidth: activeTab === "Submit" ? "100%" : "50%"
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Steps */}
+                                <div className="relative flex justify-between">
+                                    {STEPS.map((step, index) => {
+                                        const isActive = activeTab === step.id;
+                                        const isCompleted = completedSteps.includes(step.id);
+                                        const isClickable = index <= STEPS.findIndex(s => s.id === activeTab) + 1;
+
+                                        return (
+                                            <div 
+                                                key={step.id}
+                                                className="flex flex-col items-center"
+                                            >
                                         <button
-                                            key={tab.label}
-                                            onClick={() => setActiveTab(tab.label)}
-                                            className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${activeTab === tab.label
-                                                    ? "bg-[#67b5b5] text-white"
-                                                    : "text-gray-600 hover:bg-gray-50"
-                                                }`}
-                                        >
-                                            {tab.icon}
-                                            {tab.label}
+                                                    onClick={() => isClickable && setActiveTab(step.id)}
+                                                    disabled={!isClickable}
+                                                    className={`group relative flex flex-col items-center ${
+                                                        isClickable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                                                    }`}
+                                                >
+                                                    {/* Step Circle */}
+                                                    <div className={`
+                                                        w-10 h-10 rounded-full flex items-center justify-center
+                                                        transition-colors duration-200
+                                                        ${isActive 
+                                                            ? 'bg-[#2954bd] text-white ring-4 ring-[#2954bd]/20' 
+                                                            : isCompleted 
+                                                                ? 'bg-[#2954bd] text-white'
+                                                                : 'bg-gray-100 text-gray-400'
+                                                        }
+                                                    `}>
+                                                        {isCompleted ? (
+                                                            <CheckIcon className="w-5 h-5" />
+                                                        ) : (
+                                                            step.icon
+                                                        )}
+                                                    </div>
+
+                                                    {/* Step Label */}
+                                                    <span className={`
+                                                        mt-2 text-sm font-medium
+                                                        ${isActive 
+                                                            ? 'text-[#2954bd]' 
+                                                            : isCompleted 
+                                                                ? 'text-black'
+                                                                : 'text-gray-500'
+                                                        }
+                                                    `}>
+                                                        {step.label}
+                                                    </span>
+
+                                                    {/* Step Number */}
+                                                    <span className="absolute -top-1 -right-1 w-5 h-5 text-xs font-medium flex items-center justify-center rounded-full bg-gray-100">
+                                                        {index + 1}
+                                                    </span>
                                         </button>
-                                    ))}
-                                </nav>
                             </div>
-                        </aside>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                         {/* Main Content */}
-                        <main className="flex-1 min-w-0">
+                <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div className="mb-8">
+                        <h1 className="text-2xl font-semibold">
+                            {activeTab === "Profile" && "Personal Information"}
+                            {activeTab === "Account" && "Account Details"}
+                            {activeTab === "Submit" && "Review & Submit"}
+                        </h1>
+                        <p className="mt-2 text-sm text-gray-600">
+                            {activeTab === "Profile" && "Tell us about yourself and your professional background."}
+                            {activeTab === "Account" && "Provide your account and emergency contact details."}
+                            {activeTab === "Submit" && "Review your information before submitting your profile."}
+                        </p>
+                    </div>
+
+                    {/* Content Sections */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-6 sm:p-8">
                             {activeTab === "Profile" && (
-                                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8 flex flex-col gap-8 text-black">
+                            <div className="flex flex-col gap-8">
+                                {/* Profile Picture Section */}
                                     <div className="flex flex-col sm:flex-row items-center gap-6">
                                         <div className="relative w-24 h-24">
-                                            <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-gray-200">
+                                        <div className="w-24 h-24 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-200">
                                                 {profilePic ? (
                                                     <Image src={profilePic} alt="Profile" width={96} height={96} className="object-cover w-24 h-24" />
                                                 ) : (
@@ -502,7 +525,7 @@ export default function ProfileCompletion() {
                                                 onChange={handleProfilePic}
                                                 ref={fileInputRef}
                                             />
-                                            <div className="absolute bottom-0 right-0 w-8 h-8 bg-[#67b5b5] rounded-full flex items-center justify-center text-white cursor-pointer pointer-events-none">
+                                        <div className="absolute bottom-0 right-0 w-8 h-8 bg-[#2954bd] rounded-full flex items-center justify-center text-white cursor-pointer pointer-events-none shadow-sm">
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                                                 </svg>
@@ -516,11 +539,14 @@ export default function ProfileCompletion() {
 
                                     <div className="space-y-6">
                                         <div>
-                                            <label className="block font-semibold mb-2">About Me</label>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <label className="block font-semibold">About Me</label>
+                                            <InfoTooltip content="Share your professional background, experience, and what makes you unique. This helps organizations understand your expertise and personality. Aim for 2-3 sentences that highlight your key strengths and career goals." />
+                                        </div>
                                             <textarea
                                                 value={aboutMe}
                                                 onChange={(e) => setAboutMe(e.target.value)}
-                                                className="w-full border rounded-md p-2 text-black"
+                                            className="w-full border rounded-md p-2"
                                                 rows={4}
                                                 placeholder="Tell us about yourself..."
                                             />
@@ -528,12 +554,15 @@ export default function ProfileCompletion() {
 
                                         {/* Personal Details Section */}
                                         <div className="border-t pt-6">
-                                            <h3 className="text-lg font-semibold mb-4">Personal Details</h3>
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <h3 className="text-lg font-semibold">Personal Details</h3>
+                                            <InfoTooltip content="Your personal information helps us verify your identity and ensure proper communication. All information is kept secure and confidential in accordance with privacy laws." />
+                                        </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="block font-semibold mb-2">First Name</label>
                                                     <input 
-                                                        className={`w-full border rounded-md p-2 text-black ${
+                                                    className={`w-full border rounded-md p-2 ${
                                                             personalDetails.firstName ? (validateName(personalDetails.firstName) ? 'border-green-500' : 'border-red-500') : ''
                                                         }`}
                                                         value={personalDetails.firstName} 
@@ -547,7 +576,7 @@ export default function ProfileCompletion() {
                                                 <div>
                                                     <label className="block font-semibold mb-2">Last Name</label>
                                                     <input 
-                                                        className={`w-full border rounded-md p-2 text-black ${
+                                                    className={`w-full border rounded-md p-2 ${
                                                             personalDetails.lastName ? (validateName(personalDetails.lastName) ? 'border-green-500' : 'border-red-500') : ''
                                                         }`}
                                                         value={personalDetails.lastName} 
@@ -560,18 +589,46 @@ export default function ProfileCompletion() {
                                                 </div>
                                             </div>
                                             <div className="mt-4">
-                                                <label className="block font-semibold mb-2">Address</label>
-                                                <GeoapifyAutocomplete
-                                                    value={personalDetails.address || ''}
-                                                    onChange={address => setPersonalDetails({ ...personalDetails, address })}
-                                                />
+                                                <label className="block font-semibold mb-2">State</label>
+                                                <select
+                                                    className="w-full border rounded-md p-2"
+                                                    value={selectedState}
+                                                    onChange={e => {
+                                                        setSelectedState(e.target.value);
+                                                        setSelectedSuburb('');
+                                                        setPersonalDetails({ ...personalDetails, address: '' });
+                                                    }}
+                                                >
+                                                    <option value="">Select state</option>
+                                                    {Object.entries(AU_STATE_LABELS).map(([code, label]) => (
+                                                        <option key={code} value={code}>{label}</option>
+                                                    ))}
+                                                </select>
                                             </div>
+                                            {selectedState && (
+                                                <>
+                                                    <label className="block font-semibold mb-2 mt-4">Suburb</label>
+                                                    <select
+                                                        className="w-full border rounded-md p-2"
+                                                        value={selectedSuburb}
+                                                        onChange={e => {
+                                                            setSelectedSuburb(e.target.value);
+                                                            setPersonalDetails({ ...personalDetails, address: e.target.value });
+                                                        }}
+                                                    >
+                                                        <option value="">Select suburb</option>
+                                                        {(AU_STATES_SUBURBS[selectedState as keyof typeof AU_STATES_SUBURBS] || []).map((suburb: string) => (
+                                                            <option key={suburb} value={suburb}>{suburb}</option>
+                                                        ))}
+                                                    </select>
+                                                </>
+                                            )}
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                                                 <div>
                                                     <label className="block font-semibold mb-2">Date of Birth</label>
                                                     <input 
                                                         type="date" 
-                                                        className={`w-full border rounded-md p-2 text-black ${
+                                                    className={`w-full border rounded-md p-2 ${
                                                             personalDetails.dob ? (validateDateOfBirth(personalDetails.dob) ? 'border-green-500' : 'border-red-500') : ''
                                                         }`}
                                                         value={personalDetails.dob} 
@@ -583,7 +640,7 @@ export default function ProfileCompletion() {
                                                 </div>
                                                 <div>
                                                     <label className="block font-semibold mb-2">Gender</label>
-                                                    <select className="w-full border rounded-md p-2 text-black" value={personalDetails.gender} onChange={e => setPersonalDetails({ ...personalDetails, gender: e.target.value })}>
+                                                <select className="w-full border rounded-md p-2" value={personalDetails.gender} onChange={e => setPersonalDetails({ ...personalDetails, gender: e.target.value })}>
                                                         <option value="">Select gender</option>
                                                         <option value="male">Male</option>
                                                         <option value="female">Female</option>
@@ -599,7 +656,7 @@ export default function ProfileCompletion() {
                                                         <span className="text-gray-600">+61</span>
                                                     </div>
                                                     <input 
-                                                        className={`flex-1 border rounded-r-md p-2 text-black ${
+                                                    className={`flex-1 border rounded-r-md p-2 ${
                                                             personalDetails.phone ? (validatePhone(personalDetails.phone) ? 'border-green-500' : 'border-red-500') : ''
                                                         }`}
                                                         value={personalDetails.phone} 
@@ -613,17 +670,38 @@ export default function ProfileCompletion() {
                                             </div>
                                         </div>
 
-                                        {/* Healthcare Skill Section */}
+                                    {/* Healthcare Skills Section */}
                                         <div className="border-t pt-6">
-                                            <h3 className="text-lg font-semibold mb-4">Healthcare Skill</h3>
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <h3 className="text-lg font-semibold">Healthcare Skills</h3>
+                                            <InfoTooltip content="List your healthcare-related skills and certifications. Include both technical skills (e.g., patient care, medical procedures) and soft skills (e.g., communication, teamwork). This helps match you with suitable opportunities." />
+                                        </div>
                                             <div className="space-y-4">
+                                            <div className="flex flex-wrap gap-2 mb-3">
+                                                {skillsList.map((skill, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="group flex items-center gap-1 px-3 py-1.5 bg-[#2954bd]/10 rounded-full"
+                                                    >
+                                                        <span className="text-sm">{skill}</span>
+                                                        <button
+                                                            onClick={() => handleRemoveSkill(skill)}
+                                                            className="ml-1 p-0.5 rounded-full hover:bg-[#2954bd]/20 transition-colors"
+                                                        >
+                                                            <XMarkIcon className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
                                                 <input
                                                     type="text"
-                                                    value={skills}
-                                                    onChange={(e) => setSkills(e.target.value)}
-                                                    className="w-full border rounded-md p-2 text-black"
-                                                    placeholder="Enter skills separated by commas (e.g., Patient Care, Medical Records)"
-                                                />
+                                                value={skillsInput}
+                                                onChange={(e) => setSkillsInput(e.target.value)}
+                                                onKeyDown={handleAddSkill}
+                                                className="w-full border rounded-md p-2"
+                                                placeholder="Type a skill and press Enter to add"
+                                            />
+                                            <p className="text-sm text-gray-500">Press Enter to add each skill</p>
                                             </div>
                                         </div>
                                     </div>
@@ -631,15 +709,18 @@ export default function ProfileCompletion() {
                             )}
 
                             {activeTab === "Account" && (
-                                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8 flex flex-col gap-8 text-black">
+                            <div className="flex flex-col gap-8">
                                     <div className="space-y-6">
                                         <div>
-                                            <h3 className="text-lg font-semibold mb-4">Emergency Contact</h3>
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <h3 className="text-lg font-semibold">Emergency Contact</h3>
+                                            <InfoTooltip content="Provide details of someone we can contact in case of an emergency. This should be a trusted person who can be reached quickly if needed. Their information is kept strictly confidential and only used in emergency situations." />
+                                        </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="block font-semibold mb-2">Contact Name</label>
                                                     <input 
-                                                        className={`w-full border rounded-md p-2 text-black ${
+                                                    className={`w-full border rounded-md p-2 ${
                                                             emergencyContact.name ? (validateName(emergencyContact.name) ? 'border-green-500' : 'border-red-500') : ''
                                                         }`}
                                                         value={emergencyContact.name} 
@@ -658,7 +739,7 @@ export default function ProfileCompletion() {
                                                             <span className="text-gray-600">+61</span>
                                                         </div>
                                                         <input 
-                                                            className={`flex-1 border rounded-r-md p-2 text-black ${
+                                                        className={`flex-1 border rounded-r-md p-2 ${
                                                                 emergencyContact.phone ? (validatePhone(emergencyContact.phone) ? 'border-green-500' : 'border-red-500') : ''
                                                             }`}
                                                             value={emergencyContact.phone} 
@@ -674,11 +755,14 @@ export default function ProfileCompletion() {
                                         </div>
 
                                         <div>
-                                            <h3 className="text-lg font-semibold mb-4">Tax File Number</h3>
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <h3 className="text-lg font-semibold">Tax File Number</h3>
+                                            <InfoTooltip content="Your TFN is required for employment purposes. We ensure your TFN is stored securely and only used for legitimate tax and employment purposes. Never share your TFN with anyone else." />
+                                        </div>
                                             <div>
                                                 <label className="block font-semibold mb-2">TFN</label>
                                                 <input 
-                                                    className={`w-full border rounded-md p-2 text-black ${
+                                                className={`w-full border rounded-md p-2 ${
                                                         tfn.number ? (validateTFN(tfn.number) ? 'border-green-500' : 'border-red-500') : ''
                                                     }`}
                                                     value={tfn.number} 
@@ -694,49 +778,20 @@ export default function ProfileCompletion() {
                                 </div>
                             )}
 
-                            {activeTab === "Certificates" && (
-                                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8 flex flex-col gap-8 text-black">
-                                    <div className="text-center">
-                                        <h3 className="text-lg font-semibold mb-4">Certificates</h3>
-                                        <p className="text-gray-600">No certificates required at this time.</p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === "Agreements" && (
-                                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8 flex flex-col gap-8 text-black">
-                                    <div className="text-center">
-                                        <h3 className="text-lg font-semibold mb-4">Agreements</h3>
-                                        <p className="text-gray-600">No agreements required at this time.</p>
-                                    </div>
-                                </div>
-                            )}
-
                             {activeTab === "Submit" && (
-                                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8 flex flex-col gap-8 text-black">
+                            <div className="flex flex-col gap-8">
                                     <div className="text-center">
-                                        <h3 className="text-xl font-semibold mb-4">Review Your Information</h3>
-                                        {submissionStatus.type && (
-                                            <div className={`mb-4 p-4 rounded-md ${
-                                                submissionStatus.type === 'success' 
-                                                    ? 'bg-green-100 text-green-700' 
-                                                    : submissionStatus.type === 'error'
-                                                    ? 'bg-red-100 text-red-700'
-                                                    : 'bg-blue-100 text-blue-700'
-                                            }`}>
-                                                {submissionStatus.message}
-                                            </div>
-                                        )}
+                                    <h3 className="text-xl font-semibold text-gray-900 mb-4">Review Your Information</h3>
                                         <p className="text-gray-600 mb-8">
                                             Please review all your information before submitting. You can go back to previous tabs to make changes.
                                         </p>
                                         <button
                                             onClick={handleFinish}
                                             disabled={!allFilled || submissionStatus.type === 'success'}
-                                            className={`px-8 py-3 rounded-md text-white font-medium ${
+                                        className={`px-6 py-2 text-sm font-medium rounded-md ${
                                                 allFilled && submissionStatus.type !== 'success'
-                                                    ? "bg-[#67b5b5] hover:bg-[#4a9e9e]"
-                                                    : "bg-gray-300 cursor-not-allowed"
+                                                ? 'bg-[#2954bd] text-white hover:bg-[#2954bd]/90'
+                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                             }`}
                                         >
                                             {submissionStatus.type === 'success' 
@@ -750,17 +805,113 @@ export default function ProfileCompletion() {
                                     </div>
                                 </div>
                             )}
-                        </main>
+
+                        {/* Navigation Buttons */}
+                        <div className="mt-8 flex justify-between">
+                            <button
+                                onClick={() => {
+                                    const currentIndex = STEPS.findIndex(step => step.id === activeTab);
+                                    if (currentIndex > 0) {
+                                        setActiveTab(STEPS[currentIndex - 1].id);
+                                    }
+                                }}
+                                className={`px-4 py-2 text-sm font-medium rounded-md ${
+                                    activeTab === "Profile"
+                                        ? 'invisible'
+                                        : 'bg-white border border-gray-300 hover:bg-gray-50'
+                                }`}
+                            >
+                                Previous
+                            </button>
+
+                            {activeTab !== "Submit" ? (
+                                <button
+                                    onClick={() => {
+                                        const currentIndex = STEPS.findIndex(step => step.id === activeTab);
+                                        if (currentIndex < STEPS.length - 1) {
+                                            setActiveTab(STEPS[currentIndex + 1].id);
+                                        }
+                                    }}
+                                    disabled={!isStepCompleted(activeTab)}
+                                    className={`px-4 py-2 text-sm font-medium rounded-md ${
+                                        isStepCompleted(activeTab)
+                                            ? 'bg-[#2954bd] text-white hover:bg-[#2954bd]/90'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    }`}
+                                >
+                                    Next
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleFinish}
+                                    disabled={!allFilled || submissionStatus.type === 'success'}
+                                    className={`px-6 py-2 text-sm font-medium rounded-md ${
+                                        allFilled && submissionStatus.type !== 'success'
+                                            ? 'bg-[#2954bd] text-white hover:bg-[#2954bd]/90'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    }`}
+                                >
+                                    {submissionStatus.type === 'success' 
+                                        ? 'Profile Created!' 
+                                        : submissionStatus.type === 'error'
+                                        ? 'Try Again'
+                                        : submissionStatus.message === 'Creating your profile...'
+                                        ? 'Creating Profile...'
+                                        : 'Submit Profile'}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </main>
 
-            {/* Toast Notification */}
-            {showToast && (
-                <div className="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-md shadow-lg z-20">
-                    Profile completed successfully!
-                </div>
-            )}
+            {/* Error Toast */}
+            <ErrorToast
+                message={errorToast.message}
+                isVisible={errorToast.isVisible}
+                onClose={() => setErrorToast(prev => ({ ...prev, isVisible: false }))}
+                duration={6000}
+            />
         </div>
+    );
+}
+
+// Add CheckIcon component
+function CheckIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+        <svg
+            {...props}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+        >
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+            />
+        </svg>
+    );
+}
+
+// Add XMarkIcon component
+function XMarkIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+        <svg
+            {...props}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+        >
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+            />
+        </svg>
     );
 }
