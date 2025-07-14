@@ -46,7 +46,7 @@ export async function apiRequest<T>(
 
         // Handle empty response
         const text = await response.text();
-        return text ? JSON.parse(text) : {};
+        return text ? JSON.parse(text) : {} as T;
     } catch (error) {
         console.error('API Request Error:', error);
         throw error;
@@ -66,6 +66,9 @@ export const api = {
 
     // Get my bookings (job listings)
     getMyBookings: () => apiRequest<any>('/v1/bookings/my_bookings', 'GET'),
+
+    // Get a specific booking by ID
+    getBookingById: (booking_id: string) => apiRequest<any>(`/v1/bookings/${booking_id}`, 'GET'), // Added this function
 
     // Cancel a booking (job listing)
     cancelBooking: (booking_id: number) => apiRequest<any>(`/v1/bookings/cancel?booking_id=${booking_id}`, 'PATCH'),
@@ -120,4 +123,4 @@ export const api = {
             'POST',
             amount !== undefined ? { amount } : undefined
         ),
-}; 
+};

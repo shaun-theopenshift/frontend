@@ -1,1260 +1,914 @@
 "use client";
 
-import SidebarProfile from "@/app/components/SidebarProfile";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, Fragment } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Listbox, Transition, Dialog } from "@headlessui/react"; // Import Dialog from Headless UI
 import {
   MapPinIcon,
-  ChevronDownIcon,
   BriefcaseIcon,
-  CalendarDaysIcon,
-  ClockIcon,
-  TagIcon,
-  Bars3Icon,
-  XMarkIcon,
+  CalendarIcon,
+  ChevronUpDownIcon,
+  CheckIcon,
+  MagnifyingGlassIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  InformationCircleIcon,
+  Bars3Icon, // For hamburger menu
+  XMarkIcon, // For close icon
 } from "@heroicons/react/24/outline";
 import { api } from "@/utils/api";
-import { Dialog } from "@headlessui/react";
-import jsPDF from "jspdf";
-import { logoBase64 } from "./logoBase64";
+import SidebarProfile from "@/app/components/SidebarProfile";
+import StartJobPage from "@/app/profile/staff/jobs/StartJobPage";
 
+// --- TYPE DEFINITIONS ---
+interface Job {
+  id: string;
+  title: string;
+  created_at: string;
+  service: string;
+  suburb: string;
+  start_time?: string;
+  end_time?: string;
+  description?: string;
+  rate?: number;
+}
+
+interface JobRequest {
+  id: string;
+  booking_id: string;
+  comment: string;
+  rate: number;
+  status:
+    | "approved"
+    | "rejected"
+    | "pending"
+    | "sent_for_approval"
+    | "pending_payment";
+}
+
+// --- CONSTANTS ---
 const SERVICE_TYPES = [
+  { key: "", label: "All Services" },
   { key: "everyday", label: "Daily living" },
   { key: "self_care", label: "Personal care" },
   { key: "nursing", label: "Nursing" },
   { key: "healthcare", label: "Allied health" },
 ];
 
-const DAYS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
+// --- UTILITY FUNCTIONS ---
+const timeAgo = (dateString: string): string => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+  let interval = seconds / 31536000;
+  if (interval > 1) return Math.floor(interval) + " years ago";
+  interval = seconds / 2592000;
+  if (interval > 1) return Math.floor(interval) + " months ago";
+  interval = seconds / 86400;
+  if (interval > 1) return Math.floor(interval) + " days ago";
+  interval = seconds / 3600;
+  if (interval > 1) return Math.floor(interval) + " hours ago";
+  interval = seconds / 60;
+  if (interval > 1) return Math.floor(interval) + " minutes ago";
+  return "just now";
+};
 
-export default function StaffJobsPage() {
+// --- UI COMPONENTS ---
+
+const CustomDropdown = ({
+  selected,
+  setSelected,
+  options,
+  label,
+}: {
+  selected: string;
+  setSelected: (value: string) => void;
+  options: { key: string; label: string }[];
+  label: string;
+}) => (
+  <div className="w-full">
+    <Listbox value={selected} onChange={setSelected}>
+      <div className="relative">
+        <Listbox.Label className="block text-sm font-medium text-gray-500 mb-1">
+          {label}
+        </Listbox.Label>
+        <Listbox.Button className="relative w-full cursor-default rounded-lg bg-white py-3 pl-3 pr-10 text-left shadow-sm focus:outline-none focus-visible:border-[#3464b4] focus-visible:ring-2 focus-visible:ring-white/75 focus-visible:ring-offset-2 focus-visible:ring-offset-[#3464b4] sm:text-sm">
+          <span className="block truncate">
+            {options.find((o) => o.key === selected)?.label}
+          </span>
+          <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+            <ChevronUpDownIcon
+              className="h-5 w-5 text-gray-400"
+              aria-hidden="true"
+            />
+          </span>
+        </Listbox.Button>
+        <Transition
+          as={Fragment}
+          leave="transition ease-in duration-100"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm z-10">
+            {options.map((option) => (
+              <Listbox.Option
+                key={option.key}
+                className={({ active }) =>
+                  `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                    active ? "bg-[#e6ebf3] text-[#2a508f]" : "text-gray-900"
+                  }`
+                }
+                value={option.key}
+              >
+                {({ selected }) => (
+                  <>
+                    <span
+                      className={`block truncate ${
+                        selected ? "font-medium" : "font-normal"
+                      }`}
+                    >
+                      {option.label}
+                    </span>
+                    {selected ? (
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-[#3464b4]">
+                        <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                    ) : null}
+                  </>
+                )}
+              </Listbox.Option>
+            ))}
+          </Listbox.Options>
+        </Transition>
+      </div>
+    </Listbox>
+  </div>
+);
+
+const JobCard = ({
+  job,
+  index,
+  isExpanded,
+  onToggleExpand,
+  onApply,
+  requestStatus,
+  requestError,
+  myRequests,
+}: {
+  job: Job;
+  index: number;
+  isExpanded: boolean;
+  onToggleExpand: (jobId: string) => void;
+  onApply: (jobId: string, rate: number, comment: string) => void;
+  requestStatus: string;
+  requestError: string;
+  myRequests: JobRequest[];
+}) => {
+  const [rateInput, setRateInput] = useState("");
+  const [commentInput, setCommentInput] = useState("");
+
+  // Find the current user's request for this job, if any
+  const existingRequest = myRequests.find(
+    (request) => request.booking_id === job.id
+  );
+
+  // Determine if the user has an 'active' (pending or approved) request, which prevents re-applying
+  // Now also excludes 'sent_for_approval' from allowing re-application
+  const hasActiveRequest =
+    existingRequest &&
+    (existingRequest.status === "pending" ||
+      existingRequest.status === "approved" ||
+      existingRequest.status === "sent_for_approval" ||
+      existingRequest.status === "pending_payment");
+
+  const handleApplySubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!rateInput) return;
+    onApply(job.id, Number(rateInput), commentInput);
+  };
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0, transition: { delay: index * 0.05 } }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 border border-gray-200/80 ubuntu"
+    >
+      <div
+        className="p-6 cursor-pointer"
+        onClick={() => onToggleExpand(job.id)}
+      >
+        <style jsx global>{`
+          @import url("https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap");
+          .font-ubuntu {
+            font-family: "Ubuntu", sans-serif;
+          }
+        `}</style>
+        <div className="flex justify-between items-start ubuntu">
+          <div className="flex-grow">
+            <div className="flex items-center gap-3 ubuntu">
+              <div className="bg-[#e6ebf3] p-2 rounded-lg">
+                <BriefcaseIcon className="w-6 h-6 text-[#3464b4]" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">{job.title}</h3>
+                <p className="text-sm text-gray-500">
+                  {timeAgo(job.created_at)}
+                </p>
+              </div>
+            </div>
+          </div>
+          <span className="text-xs font-semibold text-[#3464b4] bg-[#e6ebf3] py-1 px-3 rounded-full">
+            {job.service}
+          </span>
+        </div>
+
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-x-6 gap-y-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <MapPinIcon className="w-5 h-5 text-gray-400" />
+            <span>{job.suburb}</span>
+          </div>
+          {job.start_time && (
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-gray-400" />
+              <span>
+                {new Date(job.start_time).toLocaleDateString()}
+                {", "}
+                {new Date(job.start_time).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                {job.end_time &&
+                  ` - ${new Date(job.end_time).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}`}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{ opacity: 1, height: "auto", marginTop: "1.5rem" }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-gray-700 mb-4">
+                {job.description || "No description provided."}
+              </p>
+
+              {hasActiveRequest ? ( // If there's a pending, approved, or sent_for_approval request
+                <div
+                  className={`mt-6 p-4 rounded-md flex items-center justify-center
+                                    ${
+                                      existingRequest?.status === "approved"
+                                        ? "bg-green-50 border border-green-200 text-green-700"
+                                        : existingRequest?.status === "pending"
+                                        ? "bg-blue-50 border border-blue-200 text-blue-700"
+                                        : existingRequest?.status ===
+                                          "sent_for_approval"
+                                        ? "bg-purple-50 border border-purple-200 text-purple-700"
+                                        : existingRequest?.status ===
+                                          "pending_payment"
+                                        ? "bg-yellow-50 border border-yellow-200 text-yellow-700"
+                                        : ""
+                                    }`}
+                >
+                  <div className="flex items-center">
+                    <InformationCircleIcon className="w-5 h-5 mr-2" />
+                    <span>
+                      {existingRequest?.status === "approved" &&
+                        "Your request for this job has been approved."}
+                      {existingRequest?.status === "pending" &&
+                        "You have a pending request for this job."}
+                      {existingRequest?.status === "sent_for_approval" &&
+                        "Timesheet sent for approval."}
+                      {existingRequest?.status === "pending_payment" &&
+                        "Timesheet approved, payment pending."}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                // No active request (either no request or it was rejected)
+                <form
+                  className="mt-6 flex flex-col sm:flex-row gap-4 items-end"
+                  onSubmit={handleApplySubmit}
+                >
+                  <div className="w-full sm:w-1/3">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Rate ($)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="w-full border-gray-300 rounded-md p-2 text-black shadow-sm focus:ring-[#3464b4] focus:border-[#3464b4]"
+                      value={rateInput}
+                      onChange={(e) => setRateInput(e.target.value)}
+                      placeholder="e.g. 30"
+                      required
+                    />
+                  </div>
+                  <div className="flex-1 w-full">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Comment (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border-gray-300 rounded-md p-2 text-black shadow-sm focus:ring-[#3464b4] focus:border-[#3464b4]"
+                      value={commentInput}
+                      onChange={(e) => setCommentInput(e.target.value)}
+                      placeholder="Add a comment"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-6 py-2 rounded-lg bg-[#3464b4] text-white font-semibold hover:bg-[#2a508f] transition disabled:opacity-50 flex-shrink-0"
+                    disabled={
+                      requestStatus === "loading" || requestStatus === "success"
+                    }
+                  >
+                    {requestStatus === "loading"
+                      ? "Sending..."
+                      : requestStatus === "success"
+                      ? "Sent!"
+                      : "Send Request"}
+                  </button>
+                </form>
+              )}
+              {requestStatus === "error" && (
+                <p className="text-red-500 text-sm mt-2">{requestError}</p>
+              )}
+              {requestStatus === "success" && (
+                <p className="text-green-500 text-sm mt-2">
+                  Your request has been sent successfully!
+                </p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+};
+
+const Pagination = ({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) => {
+  if (totalPages <= 1) return null;
+  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
+
+  return (
+    <nav
+      className="flex items-center justify-center gap-4 mt-12"
+      aria-label="Pagination"
+    >
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="p-2 rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+      >
+        <ChevronLeftIcon className="w-5 h-5" />
+      </button>
+      <div className="flex items-center gap-2">
+        {pageNumbers.map((number) => (
+          <button
+            key={number}
+            onClick={() => onPageChange(number)}
+            className={`w-10 h-10 rounded-full text-sm font-medium transition-colors ${
+              currentPage === number
+                ? "bg-[#3464b4] text-white shadow-lg"
+                : "text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            {number}
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="p-2 rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+      >
+        <ChevronRightIcon className="w-5 h-5" />
+      </button>
+    </nav>
+  );
+};
+
+// --- MAIN PAGE COMPONENT ---
+export default function RedesignedJobsPage() {
   const [suburb, setSuburb] = useState("");
   const [serviceType, setServiceType] = useState("");
-  const [day, setDay] = useState("");
-  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [descExpanded, setDescExpanded] = useState<{ [id: string]: boolean }>(
-    {}
-  );
   const [activeTab, setActiveTab] = useState<
-    "active" | "myrequests" | "history" | "activity"
+    "active" | "myrequests" | "history"
   >("active");
-  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
-  const [expandedOrgDetails, setExpandedOrgDetails] = useState<any | null>(
-    null
-  );
-  const [expandedLoading, setExpandedLoading] = useState(false);
+
+  const [myRequests, setMyRequests] = useState<JobRequest[]>([]);
+  const [myRequestsLoading, setMyRequestsLoading] = useState(false);
+  const [myRequestsError, setErrorMyRequests] = useState(""); // Renamed to avoid conflict
+
   const [requestStatus, setRequestStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
   const [requestError, setRequestError] = useState("");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [rateInput, setRateInput] = useState<{ [id: string]: string }>({});
-  const [commentInput, setCommentInput] = useState<{ [id: string]: string }>(
-    {}
+  const [activeRequestJobId, setActiveRequestJobId] = useState<string | null>(
+    null
   );
-  const [requestResponse, setRequestResponse] = useState<any>(null);
-  const [myRequests, setMyRequests] = useState<any[]>([]);
-  const [myRequestsLoading, setMyRequestsLoading] = useState(false);
-  const [myRequestsError, setMyRequestsError] = useState("");
-  const [activityTimers, setActivityTimers] = useState<{
-    [bookingId: number]: {
-      running: boolean;
-      start: number | null;
-      elapsed: number;
-    };
-  }>({});
-  const timerInterval = useRef<NodeJS.Timeout | null>(null);
-  const [myBookings, setMyBookings] = useState<any[]>([]);
-  const [checkoutMessage, setCheckoutMessage] = useState("");
-  const [checkoutDetails, setCheckoutDetails] = useState<{
-    [bookingId: number]: any;
-  }>({});
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
 
-  // Fetch jobs from backend
+  // State for navigation
+  const [currentPageView, setCurrentPageView] = useState<
+    "jobsList" | "startJob"
+  >("jobsList");
+  const [jobIdToStart, setJobIdToStart] = useState<string | null>(null);
+  //
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State for mobile sidebar
+
+  // Fetch active jobs
   useEffect(() => {
+    if (activeTab !== "active" || currentPageView !== "jobsList") return;
     async function fetchJobs() {
       setLoading(true);
       setError("");
       try {
         const params = {
           page: String(page),
-          page_size: "10",
+          page_size: "6",
           ...(suburb ? { suburb } : {}),
           ...(serviceType ? { service: serviceType } : {}),
-          ...(day ? { day } : {}),
         };
         const data = await api.searchBookings(params);
-        setJobs(data.items || []);
+        const sortedJobs = Array.isArray(data.items)
+          ? data.items.sort(
+              (a: Job, b: Job) =>
+                new Date(b.created_at).getTime() -
+                new Date(a.created_at).getTime()
+            )
+          : [];
+        setJobs(sortedJobs);
         setTotalPages(data.total_pages || 1);
       } catch (err: any) {
         setError(err.message || "Error fetching jobs");
+        setJobs([]);
       } finally {
         setLoading(false);
       }
     }
     fetchJobs();
-  }, [suburb, serviceType, day, page]);
+  }, [suburb, serviceType, page, activeTab, currentPageView]);
 
-  // Always fetch myRequests on mount
+  // Fetch "My Requests"
   useEffect(() => {
+    if (currentPageView === "startJob") return;
     setMyRequestsLoading(true);
-    setMyRequestsError("");
+    setErrorMyRequests(""); // Use renamed setter
     api
       .getMyRequests()
       .then((data) => {
         setMyRequests(Array.isArray(data) ? data : data.items || []);
       })
-      .catch((e) => setMyRequestsError(e.message || "Failed to fetch requests"))
+      .catch((e: any) =>
+        setErrorMyRequests(e.message || "Failed to fetch requests")
+      ) // Use renamed setter
       .finally(() => setMyRequestsLoading(false));
-  }, []);
+  }, [activeTab, currentPageView]);
 
-  // Fetch myBookings on mount
-  useEffect(() => {
-    api.getMyBookings().then((data) => {
-      setMyBookings(
-        Array.isArray(data) ? data : data.items || data.bookings || []
-      );
-    });
-  }, []);
-
-  // Split jobs into active/history
-  const activeJobs = jobs.filter(
-    (job: any) => job.status !== "canceled" && job.status !== "cancelled"
-  );
-  const historyJobs = jobs.filter(
-    (job: any) => job.status === "canceled" || job.status === "cancelled"
-  );
-
-  // Expand/collapse job and fetch org details
-  const handleExpandJob = async (job: any) => {
-    if (expandedJobId === job.id) {
-      setExpandedJobId(null);
-      setExpandedOrgDetails(null);
-      setRequestStatus("idle");
-      setRequestError("");
-      return;
+  const handlePageChange = (newPage: number) => {
+    if (newPage > 0 && newPage <= totalPages) {
+      setPage(newPage);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-    setExpandedJobId(job.id);
-    setExpandedLoading(true);
-    setExpandedOrgDetails(null);
-    setRequestStatus("idle");
-    setRequestError("");
-    try {
-      const org = await api.getOrgById(job.org_id);
-      setExpandedOrgDetails(org);
-    } catch (e) {
-      setExpandedOrgDetails(null);
-    }
-    setExpandedLoading(false);
   };
 
-  // Send request for job
-  const handleSendRequest = async (job: any) => {
-    if (!job) return;
+  const handleSendRequest = async (
+    jobId: string,
+    rate: number,
+    comment: string
+  ) => {
+    setActiveRequestJobId(jobId);
     setRequestStatus("loading");
     setRequestError("");
-    setRequestResponse(null);
     try {
-      const rate = Number(rateInput[job.id] || 0);
-      const comment = commentInput[job.id] || "";
-      const response = await api.sendJobRequest(job.id, rate, comment);
+      const newRequest = await api.sendJobRequest(Number(jobId), rate, comment);
       setRequestStatus("success");
-      setRequestResponse(response);
+      setMyRequests((prevRequests) => [
+        ...prevRequests,
+        { ...newRequest, booking_id: jobId },
+      ]);
+
+      setTimeout(() => {
+        setRequestStatus("idle");
+        setActiveRequestJobId(null);
+        setExpandedJobId(null);
+      }, 2000);
     } catch (e: any) {
       setRequestStatus("error");
       setRequestError(e.message || "Failed to send request");
     }
   };
 
-  // Responsive hamburger menu
-  const handleMobileMenu = () => setMobileMenuOpen(true);
-  const handleCloseMobileMenu = () => setMobileMenuOpen(false);
-
-  const myRequestsArray = Array.isArray(myRequests)
-    ? myRequests
-    : Object.values(myRequests);
-  const approvedRequests = myRequestsArray.filter(
-    (req: any) => req.status === "approved"
-  );
-
-  // Timer logic have to check
-  const startTimer = async (bookingId: number) => {
-    setActivityTimers((prev) => ({
-      ...prev,
-      [bookingId]: {
-        running: true,
-        start: Date.now(),
-        elapsed: prev[bookingId]?.elapsed || 0,
-      },
-    }));
-    try {
-      await api.checkInBooking(bookingId, false);
-      const data = await api.getMyBookings();
-      setMyBookings(
-        Array.isArray(data) ? data : data.items || data.bookings || []
-      );
-    } catch (e: any) {
-      alert(e.message || "Check-in failed");
-    }
-    if (timerInterval.current) clearInterval(timerInterval.current);
-    timerInterval.current = setInterval(() => {
-      setActivityTimers((prev) => {
-        const timer = prev[bookingId];
-        if (!timer || !timer.running) return prev;
-        return {
-          ...prev,
-          [bookingId]: {
-            ...timer,
-            elapsed: timer.elapsed + 1,
-          },
-        };
-      });
-    }, 1000);
-  };
-  const stopTimer = async (bookingId: number) => {
-    setActivityTimers((prev) => ({
-      ...prev,
-      [bookingId]: {
-        ...prev[bookingId],
-        running: false,
-      },
-    }));
-    try {
-      const response = await api.checkInBooking(bookingId, true);
-      setCheckoutDetails((prev) => ({ ...prev, [bookingId]: response }));
-      const data = await api.getMyBookings();
-      setMyBookings(
-        Array.isArray(data) ? data : data.items || data.bookings || []
-      );
-      setCheckoutMessage("Successfully checked out!");
-      setTimeout(() => setCheckoutMessage(""), 3000);
-      console.log("Check-out response:", response);
-    } catch (e: any) {
-      alert(e.message || "Check-out failed");
-    }
-    if (timerInterval.current) clearInterval(timerInterval.current);
+  const handleToggleExpand = (jobId: string) => {
+    setExpandedJobId((prevId) => (prevId === jobId ? null : jobId));
   };
 
-  const downloadTimesheetPDF = (details: any) => {
-    const doc = new jsPDF();
+  const handleStartJobClick = (jobId: string) => {
+    setJobIdToStart(jobId);
+    setCurrentPageView("startJob");
+    setIsSidebarOpen(false); // Close sidebar on navigation
+  };
 
-    // Colors
-    const primaryColor = [41, 84, 189];
-    const secondaryColor = [242, 110, 87];
+  const handleBackToJobsList = () => {
+    setCurrentPageView("jobsList");
+    setJobIdToStart(null);
+    api
+      .getMyRequests()
+      .then((data) => {
+        setMyRequests(Array.isArray(data) ? data : data.items || []);
+      })
+      .catch((e: any) =>
+        console.error(
+          "Failed to refresh requests after returning from StartJobPage:",
+          e
+        )
+      );
+  };
 
-    // Dimensions
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const logoWidth = 30;
-    const logoHeight = 30;
+  const renderContent = () => {
+    if (currentPageView === "startJob" && jobIdToStart) {
+      return (
+        <StartJobPage jobId={jobIdToStart} onBack={handleBackToJobsList} />
+      );
+    }
 
-    // Add Logo (top-right corner)
-    doc.addImage(
-      logoBase64,
-      "PNG",
-      pageWidth - logoWidth - 10,
-      10,
-      logoWidth,
-      logoHeight
-    );
+    switch (activeTab) {
+      case "active":
+        return (
+          <>
+            <div className="bg-white rounded-xl shadow-lg p-6 mb-10 border border-gray-200/80">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                <div>
+                  <label
+                    htmlFor="search"
+                    className="block text-sm font-medium text-gray-500 mb-1"
+                  >
+                    Suburb or Postcode
+                  </label>
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      id="search"
+                      placeholder="Where would you like to work?"
+                      value={suburb}
+                      onChange={(e) => {
+                        setSuburb(e.target.value);
+                        setPage(1);
+                      }}
+                      className="w-full border-gray-200 rounded-lg p-3 pl-12 shadow-sm focus:ring-[#3464b4] focus:border-[#3464b4]"
+                    />
+                  </div>
+                </div>
+                <CustomDropdown
+                  label="Service Type"
+                  selected={serviceType}
+                  setSelected={(value) => {
+                    setServiceType(value);
+                    setPage(1);
+                  }}
+                  options={SERVICE_TYPES}
+                />
+              </div>
+            </div>
 
-    const companyInfoX = pageWidth - 10;
-
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text("Company Details maybe", companyInfoX, 45, { align: "right" });
-    doc.text("123 Example St, City, ZIP", companyInfoX, 50, { align: "right" });
-    doc.text("Phone: 123-456-7890", companyInfoX, 55, { align: "right" });
-
-    // Title
-    doc.setFontSize(20);
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.setFont("helvetica", "bold");
-    doc.text("Timesheet", 10, 30);
-
-    // Section background header
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.rect(10, 65, 190, 10, "F");
-    doc.setTextColor(255);
-    doc.setFontSize(12);
-    doc.text("Timesheet Details", 12, 72);
-
-    // Table-style layout
-    doc.setFontSize(11);
-    doc.setTextColor(0);
-    doc.setFont("helvetica", "normal");
-
-    const startY = 80;
-    const lineHeight = 8;
-    let y = startY;
-
-    const rows = [
-      ["Booking ID", details.id],
-      ["User ID", details.user_id],
-      ["Service", details.service],
-      ["Suburb", details.suburb],
-      ["Address", details.address],
-      ["Title", details.title],
-      ["Shift", `${details.start_time} - ${details.end_time}`],
-      ["Check-in", details.check_in_time],
-      ["Check-out", details.check_out_time],
-      ["Rate", `$${details.rate}`],
-      ["Amount", `$${details.amount}`],
-    ];
-
-    rows.forEach(([label, value]) => {
-      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-      doc.text(`${label}:`, 12, y);
-      doc.setTextColor(0);
-      doc.text(`${value}`, 60, y);
-      y += lineHeight;
-    });
-
-    // Footer text (small)
-    doc.setFontSize(8);
-    doc.setTextColor(100);
-    const footerText = [
-      "This timesheet is auto-generated and should be verified by an authorized manager before payroll processing.",
-    ];
-    doc.text(footerText, 10, 260);
-
-    // Save
-    doc.save(`${details.id}_${details.user_id}.pdf`);
+            <AnimatePresence>
+              {loading ? (
+                <motion.div className="text-center py-20">
+                  <p className="text-lg text-gray-500">Loading jobs...</p>
+                </motion.div>
+              ) : error ? (
+                <motion.div className="text-center py-20 bg-red-50 text-red-700 p-4 rounded-lg">
+                  <h3 className="text-xl font-semibold">An Error Occurred</h3>
+                  <p>{error}</p>
+                </motion.div>
+              ) : jobs.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {jobs.map((job, index) => (
+                    <JobCard
+                      key={job.id}
+                      job={job}
+                      index={index}
+                      isExpanded={expandedJobId === job.id}
+                      onToggleExpand={handleToggleExpand}
+                      onApply={handleSendRequest}
+                      requestStatus={
+                        activeRequestJobId === job.id ? requestStatus : "idle"
+                      }
+                      requestError={
+                        activeRequestJobId === job.id ? requestError : ""
+                      }
+                      myRequests={myRequests}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center py-20"
+                >
+                  <h3 className="text-2xl font-semibold text-gray-700">
+                    No Jobs Found
+                  </h3>
+                  <p className="mt-2 text-gray-500">
+                    Try adjusting your search filters.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
+          </>
+        );
+      case "myrequests":
+        const myActiveRequests = myRequests.filter(
+          (req) =>
+            req.status === "pending" ||
+            req.status === "approved" ||
+            req.status === "pending_payment" ||
+            req.status === "sent_for_approval"
+        );
+        return myRequestsLoading ? (
+          <div className="text-center py-20">
+            <p className="text-lg text-gray-500">Loading requests...</p>
+          </div>
+        ) : myRequestsError ? (
+          <div className="text-center py-20 bg-red-50 text-red-700 p-4 rounded-lg">
+            <h3 className="text-xl font-semibold">An Error Occurred</h3>
+            <p>{myRequestsError}</p>
+          </div>
+        ) : myActiveRequests.length === 0 ? (
+          <div className="text-center py-20">
+            <h3 className="text-2xl font-semibold text-gray-700">
+              No Active Requests Found
+            </h3>
+            <p className="mt-2 text-gray-500">
+              You don't have any pending, approved, or payment-pending job
+              requests.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {myActiveRequests.map((req) => (
+              <div
+                key={req.id}
+                className="bg-white border rounded-xl shadow-md p-6"
+              >
+                <h3 className="font-bold text-lg text-gray-800">
+                  Request for Booking #{req.booking_id}
+                </h3>
+                <p className="text-gray-600 mt-2">
+                  Comment:{" "}
+                  {req.comment || <span className="italic">No comment</span>}
+                </p>
+                <div className="flex items-center justify-between mt-4 text-sm">
+                  <div className="flex items-center gap-4">
+                    <span className="font-semibold">Rate: ${req.rate}</span>
+                    <span
+                      className={`font-semibold px-3 py-1 rounded-full text-xs uppercase ${
+                        req.status === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : req.status === "rejected"
+                          ? "bg-red-100 text-red-800"
+                          : req.status === "sent_for_approval"
+                          ? "bg-purple-100 text-purple-800"
+                          : req.status === "pending_payment"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {req.status.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                  {req.status === "approved" ? (
+                    <button
+                      onClick={() => handleStartJobClick(req.booking_id)}
+                      className="ml-4 px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition"
+                    >
+                      Start Job
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleStartJobClick(req.booking_id)}
+                      className="ml-4 px-4 py-2 rounded-lg bg-[#3464b4] text-white font-semibold hover:bg-[#2a508f] transition"
+                    >
+                      View Details
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      case "history":
+        const myHistoryRequests = myRequests.filter(
+          (req) =>
+            req.status === "rejected" || req.status === "sent_for_approval"
+        );
+        return myRequestsLoading ? (
+          <div className="text-center py-20">
+            <p className="text-lg text-gray-500">Loading history...</p>
+          </div>
+        ) : myRequestsError ? (
+          <div className="text-center py-20 bg-red-50 text-red-700 p-4 rounded-lg">
+            <h3 className="text-xl font-semibold">An Error Occurred</h3>
+            <p>{myRequestsError}</p>
+          </div>
+        ) : myHistoryRequests.length === 0 ? (
+          <div className="text-center py-20">
+            <h3 className="text-2xl font-semibold text-gray-700">
+              No History Found
+            </h3>
+            <p className="mt-2 text-gray-500">
+              Your rejected or completed jobs will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {myHistoryRequests.map((req) => (
+              <div
+                key={req.id}
+                className="bg-white border rounded-xl shadow-md p-6"
+              >
+                <h3 className="font-bold text-lg text-gray-800">
+                  Request for Booking #{req.booking_id}
+                </h3>
+                <p className="text-gray-600 mt-2">
+                  Comment:{" "}
+                  {req.comment || <span className="italic">No comment</span>}
+                </p>
+                <div className="flex items-center gap-4 mt-4 text-sm">
+                  <span className="font-semibold">Rate: ${req.rate}</span>
+                  <span
+                    className={`font-semibold px-3 py-1 rounded-full text-xs uppercase ${
+                      req.status === "approved"
+                        ? "bg-green-100 text-green-800"
+                        : req.status === "rejected"
+                        ? "bg-red-100 text-red-800"
+                        : req.status === "sent_for_approval"
+                        ? "bg-purple-100 text-purple-800"
+                        : req.status === "pending_payment"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {req.status.replace(/_/g, " ")}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col md:flex-row">
-      {/* Hamburger for mobile */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3 border-b">
-        <h1 className="text-2xl font-bold text-black">Jobs</h1>
-        <button
-          onClick={handleMobileMenu}
-          className="text-[#2954bd] focus:outline-none"
+    <>
+      <style jsx global>{`
+        @import url("https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap");
+        body {
+          font-family: "Ubuntu", sans-serif;
+        }
+      `}</style>
+      <div className="min-h-screen bg-gray-50 text-gray-800 flex">
+        {/* Mobile Sidebar (off-canvas) */}
+        <Dialog
+          as="div"
+          className="relative z-40 md:hidden"
+          open={isSidebarOpen}
+          onClose={setIsSidebarOpen}
         >
-          <Bars3Icon className="w-7 h-7" />
-        </button>
-      </div>
-      {/* Sidebar */}
-      <div className={mobileMenuOpen ? "block md:block" : "hidden md:block"}>
-        <SidebarProfile userType="staff" />
-        {/* Overlay for mobile */}
-        {mobileMenuOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/30"
-            onClick={handleCloseMobileMenu}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/20"
+            aria-hidden="true"
           />
-        )}
-        {mobileMenuOpen && (
-          <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg p-4 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xl font-bold text-[#2954bd]">Menu</span>
-              <button onClick={handleCloseMobileMenu} className="text-gray-700">
-                <XMarkIcon className="w-6 h-6" />
-              </button>
-            </div>
-            <SidebarProfile userType="staff" />
-          </div>
-        )}
-      </div>
-      <main className="flex-1 md:pl-72 pt-8 px-2 sm:px-6">
-        <div className="max-w-4xl mx-auto py-4 sm:py-8">
-          {/* Tabs */}
-          <div className="flex gap-4 border-b mb-6">
-            <button
-              className={`pb-2 px-2 text-lg font-medium border-b-2 transition-colors ${
-                activeTab === "active"
-                  ? "border-[#2954bd] text-[#2954bd]"
-                  : "border-transparent text-gray-500 hover:text-[#2954bd]"
-              }`}
-              onClick={() => setActiveTab("active")}
+
+          <div className="fixed inset-0 flex">
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: "0%" }}
+              exit={{ x: "-100%" }}
+              transition={{ ease: "easeOut", duration: 0.2 }}
+              className="relative flex w-full max-w-xs flex-1 flex-col bg-white"
             >
-              Active Jobs
-            </button>
-            <button
-              className={`pb-2 px-2 text-lg font-medium border-b-2 transition-colors ${
-                activeTab === "myrequests"
-                  ? "border-[#2954bd] text-[#2954bd]"
-                  : "border-transparent text-gray-500 hover:text-[#2954bd]"
-              }`}
-              onClick={() => setActiveTab("myrequests")}
-            >
-              My Requests
-            </button>
-            <button
-              className={`pb-2 px-2 text-lg font-medium border-b-2 transition-colors ${
-                activeTab === "history"
-                  ? "border-[#2954bd] text-[#2954bd]"
-                  : "border-transparent text-gray-500 hover:text-[#2954bd]"
-              }`}
-              onClick={() => setActiveTab("history")}
-            >
-              History
-            </button>
-            {approvedRequests.length > 0 && (
-              <button
-                className={`pb-2 px-2 text-lg font-medium border-b-2 transition-colors ${
-                  activeTab === "activity"
-                    ? "border-[#2954bd] text-[#2954bd]"
-                    : "border-transparent text-gray-500 hover:text-[#2954bd]"
-                }`}
-                onClick={() => setActiveTab("activity")}
-              >
-                Activity
-              </button>
-            )}
-          </div>
-          {/* Filters */}
-          {activeTab !== "activity" && (
-            <div className="bg-gray-50 rounded-xl p-6 mb-8 shadow flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row gap-4 items-center">
-                <div className="flex-1 w-full">
-                  <label className="block text-sm font-semibold mb-1 text-black">
-                    Suburb or postcode
-                  </label>
-                  <div className="relative">
-                    <input
-                      className="w-full border rounded-md p-2 pl-10 text-black"
-                      placeholder="Where would you like to work?"
-                      value={suburb}
-                      onChange={(e) => setSuburb(e.target.value)}
-                    />
-                    <MapPinIcon className="w-5 h-5 text-gray-400 absolute left-2 top-2.5" />
-                  </div>
-                </div>
-                <div className="w-full sm:w-48">
-                  <label className="block text-sm font-semibold mb-1 text-black">
-                    Service Type
-                  </label>
-                  <select
-                    className="w-full border rounded-md p-2 text-black"
-                    value={serviceType}
-                    onChange={(e) => setServiceType(e.target.value)}
-                  >
-                    <option value="">All</option>
-                    {SERVICE_TYPES.map((s) => (
-                      <option key={s.key} value={s.key}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="w-full sm:w-40">
-                  <label className="block text-sm font-semibold mb-1 text-black">
-                    Days
-                  </label>
-                  <select
-                    className="w-full border rounded-md p-2 text-black"
-                    value={day}
-                    onChange={(e) => setDay(e.target.value)}
-                  >
-                    <option value="">All</option>
-                    {DAYS.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div className="absolute top-0 right-0 -mr-12 pt-2">
+                <button
+                  type="button"
+                  className="ml-1 flex h-10 w-10 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                  onClick={() => setIsSidebarOpen(false)}
+                >
+                  <span className="sr-only">Close sidebar</span>
+                  <XMarkIcon
+                    className="h-6 w-6 text-white"
+                    aria-hidden="true"
+                  />
+                </button>
               </div>
-            </div>
-          )}
-          {activeTab === "activity" ? (
-            <>
-              <div className="text-center text-blue-500 py-2">
-                Activity tab is rendering
-              </div>
-              {myRequestsLoading || loading ? (
-                <div className="text-center text-gray-500 py-12">
-                  Loading...
-                </div>
-              ) : approvedRequests.length === 0 ? (
-                <div className="text-center text-gray-500 py-12">
-                  No approved jobs yet.
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {approvedRequests.map((req: any) => {
-                    const booking: any = myBookings.find(
-                      (b: any) => b.id === req.booking_id
-                    );
-                    if (!booking) {
-                      return (
-                        <div
-                          key={req.id}
-                          className="bg-yellow-50 border border-yellow-200 rounded-2xl shadow-md p-6 text-yellow-800"
-                        >
-                          Approved job (Booking ID: {req.booking_id}) not found
-                          in your bookings. Please contact support.
-                        </div>
-                      );
-                    }
+              <SidebarProfile userType="staff" />
+            </motion.div>
+          </div>
+        </Dialog>
 
-                    // booking.status we use
-                    const isSummaryState =
-                      booking.status === "sent_for_approval" ||
-                      booking.status === "checked_out";
-
-                    // Timer logic
-                    const canCheckIn = booking.status === "confirmed";
-                    const canCheckOut = booking.status === "checked_in";
-                    const timer = activityTimers[booking.id] || {
-                      running: false,
-                      start: null,
-                      elapsed: 0,
-                    };
-                    const hours = Math.floor(timer.elapsed / 3600);
-                    const minutes = Math.floor((timer.elapsed % 3600) / 60);
-                    const seconds = timer.elapsed % 60;
-
-                    // Details for summary state
-                    const summaryDetails =
-                      checkoutDetails[booking.id] || booking;
-                    // Calculate total hours worked
-                    const checkIn = summaryDetails.check_in_time
-                      ? new Date(summaryDetails.check_in_time)
-                      : null;
-                    const checkOut = summaryDetails.check_out_time
-                      ? new Date(summaryDetails.check_out_time)
-                      : null;
-                    // --- Amount Calculation Logic: tweak this if you want to change how the total amount is calculated ---
-                    const totalHours =
-                      checkIn && checkOut
-                        ? ((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60)).toFixed(2)
-                        : "0.00";
-                    const amount =
-                      summaryDetails.rate && totalHours
-                        ? (summaryDetails.rate * parseFloat(totalHours)).toFixed(2)
-                        : "0.00";
-
-                    if (isSummaryState) {
-                      return (
-                        <div
-                          key={booking.id}
-                          className="bg-white p-6 border rounded-2xl shadow-md flex flex-col gap-4 items-center"
-                        >
-                          <div className="flex items-center gap-2 text-2xl font-bold text-[#2954bd]">
-                            <ClockIcon className="w-8 h-8" />
-                            Shift Complete!
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full text-black">
-                            <div className="flex items-center gap-2">
-                              <CalendarDaysIcon className="w-5 h-5 text-[#2954bd]" />
-                              <span>
-                                Shift:{" "}
-                                <b>
-                                  {summaryDetails.start_time
-                                    ? new Date(
-                                        summaryDetails.start_time
-                                      ).toLocaleString()
-                                    : "-"}{" "}
-                                  -{" "}
-                                  {summaryDetails.end_time
-                                    ? new Date(
-                                        summaryDetails.end_time
-                                      ).toLocaleString()
-                                    : "-"}
-                                </b>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <ClockIcon className="w-5 h-5 text-[#2954bd]" />
-                              <span>
-                                Check-in:{" "}
-                                <b>
-                                  {checkIn ? checkIn.toLocaleString() : "-"}
-                                </b>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <ClockIcon className="w-5 h-5 text-[#2954bd]" />
-                              <span>
-                                Check-out:{" "}
-                                <b>
-                                  {checkOut ? checkOut.toLocaleString() : "-"}
-                                </b>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <TagIcon className="w-5 h-5 text-[#2954bd]" />
-                              <span>
-                                Total hours: <b>{totalHours}h</b>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <BriefcaseIcon className="w-5 h-5 text-[#2954bd]" />
-                              <span>
-                                Booking ID:{" "}
-                                <b>{summaryDetails.id || booking.id}</b>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <TagIcon className="w-5 h-5 text-[#2954bd]" />
-                              <span>
-                                Amount: <b>${amount}</b>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <TagIcon className="w-5 h-5 text-[#2954bd]" />
-                              <span>
-                                Status:{" "}
-                                <b>{summaryDetails.status || booking.status}</b>
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-4 mt-6">
-                            <button
-                              className="px-6 py-2 rounded bg-[#2954bd] text-white font-semibold hover:bg-[#1d3e8a] transition"
-                              onClick={async () => {
-                                await api.sendTimesheet(
-                                  summaryDetails.id || booking.id,
-                                  {
-                                    ...summaryDetails,
-                                    amount,
-                                    status: "sent_for_approval",
-                                  }
-                                );
-                                setCheckoutDetails((prev) => ({
-                                  ...prev,
-                                  [booking.id]: {
-                                    ...summaryDetails,
-                                    amount,
-                                    status: "sent_for_approval",
-                                  },
-                                }));
-                              }}
-                              disabled={
-                                summaryDetails.status === "sent_for_approval"
-                              }
-                            >
-                              {summaryDetails.status === "sent_for_approval"
-                                ? "Timesheet Sent"
-                                : "Send Timesheet for Review"}
-                            </button>
-                            <button
-                              className="px-6 py-2 rounded bg-green-500 text-white font-semibold hover:bg-green-700 transition"
-                              onClick={() =>
-                                downloadTimesheetPDF({
-                                  ...summaryDetails,
-                                  amount,
-                                })
-                              }
-                            >
-                              Download Timesheet
-                            </button>
-                          </div>
-                          {(summaryDetails.status || booking.status) ===
-                            "sent_for_approval" && (
-                            <div
-                              className="w-full bg-yellow-100 border-t-2 border-b-2 border-yellow-400 text-yellow-800 flex items-center h-12"
-                              style={{ margin: 0, padding: 0 }}
-                            >
-                              <svg
-                                className="w-5 h-5 ml-4 mr-2 text-yellow-500 flex-shrink-0"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                viewBox="0 0 24 24"
-                              >
-                                <circle
-                                  cx="12"
-                                  cy="12"
-                                  r="10"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  fill="none"
-                                />
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M12 8v4m0 4h.01"
-                                />
-                              </svg>
-                              <span>
-                                Your timesheet is under review, you will be notified
-                                once the status is updated.
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    // Timer card (not summary state)
-                    if (booking.status === 'pending_payment') {
-                      return (
-                        <div
-                          key={booking.id}
-                          className="bg-white border rounded-2xl shadow-md p-6 flex flex-col gap-4 items-center"
-                        >
-                          <h2 className="text-lg font-bold text-black mb-1 w-full text-left">{booking.title}</h2>
-                          <div className="flex flex-wrap gap-2 text-xs text-gray-500 mb-1 w-full">
-                            <span>
-                              Start: <span className="font-semibold text-black">{booking.start_time ? new Date(booking.start_time).toLocaleString() : "-"}</span>
-                            </span>
-                            <span>
-                              End: <span className="font-semibold text-black">{booking.end_time ? new Date(booking.end_time).toLocaleString() : "-"}</span>
-                            </span>
-                            <span>
-                              Booking Status: <span className="font-semibold text-black">{booking.status}</span>
-                            </span>
-                          </div>
-                          {/* Horizontal Stepper */}
-                          <div className="flex flex-col items-center w-full max-w-md mx-auto mt-6">
-                            <div className="flex items-center w-full justify-center gap-0">
-                              {/* Step 1: Pending Payment */}
-                              <div className="flex flex-col items-center flex-1 min-w-0">
-                                <div className="w-7 h-7 rounded-full bg-yellow-400 flex items-center justify-center text-white font-bold">1</div>
-                                <div className="font-semibold text-yellow-700 mt-2">Pending Payment</div>
-                                <div className="text-xs text-gray-500 text-center mt-1">Your timesheet has been approved and is awaiting payment.</div>
-                              </div>
-                              {/* Connector */}
-                              <div className="flex-0 w-12 h-1 bg-gray-300 mx-2 rounded-full" />
-                              {/* Step 2: Payment Received */}
-                              <div className="flex flex-col items-center flex-1 min-w-0">
-                                <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold">2</div>
-                                <div className="font-semibold text-gray-400 mt-2">Payment Received</div>
-                                <div className="text-xs text-gray-400 text-center mt-1">You will be notified once payment is processed.</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div
-                        key={booking.id}
-                        className="bg-white border rounded-2xl shadow-md p-6 flex flex-col gap-2"
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                          <div>
-                            <h2 className="text-lg font-bold text-black mb-1">
-                              {booking.title}
-                            </h2>
-                            <div className="flex flex-wrap gap-2 text-xs text-gray-500 mb-1">
-                              <span>
-                                Start:{" "}
-                                <span className="font-semibold text-black">
-                                  {booking.start_time
-                                    ? new Date(
-                                        booking.start_time
-                                      ).toLocaleString()
-                                    : "-"}
-                                </span>
-                              </span>
-                              <span>
-                                End:{" "}
-                                <span className="font-semibold text-black">
-                                  {booking.end_time
-                                    ? new Date(
-                                        booking.end_time
-                                      ).toLocaleString()
-                                    : "-"}
-                                </span>
-                              </span>
-                              <span>
-                                Booking Status:{" "}
-                                <span className="font-semibold text-black">
-                                  {booking.status}
-                                </span>
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-center mt-4 text-black">
-                          <div className="text-3xl font-mono mb-2">
-                            {hours.toString().padStart(2, "0")}:
-                            {minutes.toString().padStart(2, "0")}:
-                            {seconds.toString().padStart(2, "0")}
-                          </div>
-                          <div className="flex gap-4">
-                            <button
-                              className="px-6 py-2 rounded bg-green-500 text-white font-semibold hover:bg-green-700 transition disabled:opacity-50"
-                              onClick={() => startTimer(booking.id)}
-                              disabled={timer.running || !canCheckIn}
-                              title={
-                                !canCheckIn
-                                ? "You can only check in when the booking is confirmed."
-                                  : ""
-                              }
-                            >
-                              ▶ Check In
-                            </button>
-                            <button
-                              className="px-6 py-2 rounded bg-red-500 text-white font-semibold hover:bg-red-700 transition disabled:opacity-50"
-                              onClick={() => stopTimer(booking.id)}
-                              disabled={!canCheckOut}
-                              title={
-                                !canCheckOut
-                                ? "You can only check out when the booking is checked in."
-                                  : ""
-                              }
-                            >
-                              ■ Check Out
-                            </button>
-                          </div>
-                          <div className="mt-2 text-gray-500 text-xs">
-                            Total recorded: {hours}h {minutes}m {seconds}s
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Job List */}
-              {activeTab === "myrequests" ? (
-                myRequestsLoading ? (
-                  <div className="text-center text-gray-500 py-12">
-                    Loading requests...
-                  </div>
-                ) : myRequestsError ? (
-                  <div className="text-center text-red-500 py-12">
-                    {myRequestsError}
-                  </div>
-                ) : myRequestsArray.length === 0 ? (
-                  <div className="text-center text-gray-500 py-12">
-                    No requests found.
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-6">
-                      {myRequestsArray.map((req: any, idx: number) => (
-                        <div
-                          key={req.id || idx}
-                          className="bg-white border rounded-2xl shadow-md p-6 flex flex-col gap-2"
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <div>
-                              <h2 className="text-lg font-bold text-black mb-1">
-                                Request for Booking #{req.booking_id}
-                              </h2>
-                              <div className="text-gray-700 text-sm mb-1">
-                                Comment:{" "}
-                                {req.comment || (
-                                  <span className="italic text-gray-400">
-                                    No comment
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                                <span>
-                                  Rate:{" "}
-                                  <span className="font-semibold text-black">
-                                    {req.rate}
-                                  </span>
-                                </span>
-                                <span>
-                                  Status:{" "}
-                                  <span
-                                    className={
-                                      req.status === "approved"
-                                        ? "rounded-full px-2 py-1 bg-green-100 text-green-700 font-semibold"
-                                        : req.status === "rejected"
-                                        ? "rounded-full px-2 py-1 bg-red-100 text-red-700 font-semibold"
-                                        : req.status === "pending"
-                                        ? "rounded-full px-2 py-1 bg-yellow-100 text-yellow-700 font-semibold"
-                                        : "rounded-full px-2 py-1 bg-gray-100 text-gray-700 font-semibold"
-                                    }
-                                  >
-                                    {req.status}
-                                  </span>
-                                </span>
-                                <span>
-                                  Request ID:{" "}
-                                  <span className="font-semibold text-black">
-                                    {req.id}
-                                  </span>
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-xs text-gray-400 text-right">
-                              User: {req.user_id}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )
-              ) : activeTab === "history" ? (
-                myBookings.filter(
-                  (booking) => booking.status === "sent_for_approval"
-                ).length === 0 ? (
-                  <div className="text-center text-gray-500 py-12">
-                    No bookings sent for approval.
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {myBookings
-                      .filter(
-                        (booking) => booking.status === "sent_for_approval"
-                      )
-                      .map((booking) => {
-                        const start = booking.start_time
-                          ? new Date(booking.start_time)
-                          : null;
-                        const end = booking.end_time
-                          ? new Date(booking.end_time)
-                          : null;
-                        const totalHours =
-                          start && end
-                            ? (
-                                (end.getTime() - start.getTime()) /
-                                (1000 * 60 * 60)
-                              ).toFixed(2)
-                            : "0.00";
-                        return (
-                          <div
-                            key={booking.id}
-                            className="bg-white border rounded-2xl shadow-md p-6 flex flex-col gap-4"
-                          >
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                              <div>
-                                <h2 className="text-lg font-bold text-black mb-1">
-                                  {booking.title}
-                                </h2>
-                                <div className="flex flex-wrap gap-2 text-xs text-gray-500 mb-1">
-                                  <span>
-                                    Start:{" "}
-                                    <span className="font-semibold text-black">
-                                      {start ? start.toLocaleString() : "-"}
-                                    </span>
-                                  </span>
-                                  <span>
-                                    End:{" "}
-                                    <span className="font-semibold text-black">
-                                      {end ? end.toLocaleString() : "-"}
-                                    </span>
-                                  </span>
-                                  <span>
-                                    Booking Status:{" "}
-                                    <span className="font-semibold text-black">
-                                      {booking.status}
-                                    </span>
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                              <div className="text-gray-700">
-                                <span className="font-semibold">
-                                  Total hours:
-                                </span>{" "}
-                                {totalHours}h
-                              </div>
-                              <div className="text-gray-700">
-                                <span className="font-semibold">
-                                  Booking ID:
-                                </span>{" "}
-                                {booking.id}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )
-              ) : loading ? (
-                <div className="text-center text-gray-500 py-12">
-                  Loading jobs...
-                </div>
-              ) : error ? (
-                <div className="text-center text-red-500 py-12">{error}</div>
-              ) : (activeTab === "active" ? activeJobs : historyJobs).length ===
-                0 ? (
-                <div className="text-center text-gray-500 py-12">
-                  No jobs match your filters.
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {(activeTab === "active" ? activeJobs : historyJobs).map(
-                    (job: any) => {
-                      const isExpanded = expandedJobId === job.id;
-                      const toggleDesc = (id: string) =>
-                        setDescExpanded((prev) => ({
-                          ...prev,
-                          [id]: !prev[id],
-                        }));
-                      const hasDescription =
-                        job.description && job.description.trim().length > 0;
-                      const isLong =
-                        hasDescription && job.description.length > 80;
-                      return (
-                        <div key={job.id} className="w-full">
-                          <button
-                            className="w-full text-left bg-white border rounded-2xl shadow-md p-6 flex flex-col gap-4 hover:shadow-lg transition-shadow duration-200 group focus:outline-none"
-                            onClick={() => handleExpandJob(job)}
-                            aria-expanded={isExpanded}
-                          >
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <BriefcaseIcon className="w-6 h-6 text-[#2954bd]" />
-                                  <h2 className="text-2xl font-extrabold text-gray-900 group-hover:text-[#2954bd] transition-colors truncate">
-                                    {job.title}
-                                  </h2>
-                                </div>
-                                <div className="flex flex-wrap gap-2 items-center mb-2">
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e6f2f2] text-[#2954bd]">
-                                    <TagIcon className="w-4 h-4 mr-1 text-[#2954bd]" />
-                                    {job.service}
-                                  </span>
-                                  <span className="inline-flex items-center text-sm text-gray-700">
-                                    <MapPinIcon className="w-4 h-4 mr-1 text-gray-400" />
-                                    <span className="font-semibold text-black">
-                                      {job.suburb}
-                                    </span>
-                                  </span>
-                                  {job.start_time && (
-                                    <span className="inline-flex items-center text-sm text-black">
-                                      <ClockIcon className="w-4 h-4 mr-1 text-gray-400" />
-                                      <span>
-                                      {new Date(
-                                        job.start_time
-                                        ).toLocaleDateString()}{" "}
-                                      {new Date(
-                                        job.start_time
-                                      ).toLocaleTimeString([], {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                      </span>
-                                    </span>
-                                  )}
-                                  {job.end_time && (
-                                    <>
-                                      <span className="mx-1 text-sm text-black">
-                                        -
-                                      </span>
-                                      <ClockIcon className="w-4 h-4 mr-1 text-gray-400" />
-                                      <span className="text-black text-sm">
-                                        {new Date(
-                                          job.end_time
-                                        ).toLocaleDateString()}{" "}
-                                      {new Date(
-                                        job.end_time
-                                      ).toLocaleTimeString([], {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                    </span>
-                                    </>
-                                  )}
-                                </div>
-                                <div
-                                  className={
-                                    isExpanded
-                                      ? "text-gray-800 text-base mt-1"
-                                      : isLong
-                                      ? "text-gray-800 text-base mt-1 line-clamp-2"
-                                      : "text-gray-800 text-base mt-1"
-                                  }
-                                >
-                                  {hasDescription ? (
-                                    job.description
-                                  ) : (
-                                    <span className="italic text-gray-400">
-                                      No description provided.
-                                    </span>
-                                  )}
-                                  {isLong && (
-                                    <button
-                                      className="ml-2 text-[#2954bd] font-semibold text-xs focus:outline-none hover:underline"
-                                      onClick={() => toggleDesc(job.id)}
-                                    >
-                                      {isExpanded ? "Show less" : "Read more"}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex flex-col items-end min-w-[120px]">
-                                <span className="text-xs text-gray-400">
-                                  Posted{" "}
-                                  {job.created_at
-                                    ? Math.round(
-                                        (Date.now() -
-                                          new Date(job.created_at).getTime()) /
-                                          (1000 * 60 * 60 * 24)
-                                      )
-                                    : 0}{" "}
-                                  days ago
-                                </span>
-                              </div>
-                            </div>
-                          </button>
-                          {isExpanded && (
-                            <div className="bg-gray-50 border-l-4 border-[#2954bd] rounded-b-2xl shadow-inner p-5 mt-[-1.5rem] mb-6">
-                              {expandedLoading ? (
-                                <div className="text-center py-8 text-gray-500">
-                                  Loading organisation details...
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="mt-2">
-                                    <h3 className="text-lg font-bold mb-2 text-[#2954bd]">
-                                      Organisation Details
-                                    </h3>
-                                    {expandedOrgDetails ? (
-                                      <div className="space-y-1">
-                                        <div className="font-semibold text-black">
-                                          {expandedOrgDetails.name}
-                                        </div>
-                                        <div className="text-gray-700 text-sm">
-                                          {expandedOrgDetails.description}
-                                        </div>
-                                        <div className="text-gray-600 text-sm">
-                                          Address: {expandedOrgDetails.address}
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="text-gray-400 text-sm">
-                                        No organisation details found.
-                                      </div>
-                                    )}
-                                  </div>
-                                  {/* Send Request Form */}
-                                  <form
-                                    className="mt-6 flex flex-col sm:flex-row gap-3 items-end"
-                                    onSubmit={(e) => {
-                                      e.preventDefault();
-                                      handleSendRequest(job);
-                                    }}
-                                  >
-                                    <div className="flex-1 flex flex-col gap-2">
-                                      <label className="text-xs font-semibold text-gray-700">
-                                        Rate
-                                      </label>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        className="w-full border rounded-md p-2 text-black"
-                                        value={rateInput[job.id] || ""}
-                                        onChange={(e) =>
-                                          setRateInput((r) => ({
-                                            ...r,
-                                            [job.id]: e.target.value,
-                                          }))
-                                        }
-                                        placeholder="Enter your rate (e.g. 30)"
-                                        required
-                                      />
-                                    </div>
-                                    <div className="flex-1 flex flex-col gap-2">
-                                      <label className="text-xs font-semibold text-gray-700">
-                                        Comment
-                                      </label>
-                                      <input
-                                        type="text"
-                                        className="w-full border rounded-md p-2 text-black"
-                                        value={commentInput[job.id] || ""}
-                                        onChange={(e) =>
-                                          setCommentInput((c) => ({
-                                            ...c,
-                                            [job.id]: e.target.value,
-                                          }))
-                                        }
-                                        placeholder="Add a comment (optional)"
-                                      />
-                                    </div>
-                                    <button
-                                      type="submit"
-                                      className="flex-1 px-6 py-2 rounded bg-[#2954bd] text-white font-semibold hover:bg-[#1d3e8a] transition disabled:opacity-50"
-                                      disabled={
-                                        requestStatus === "loading" ||
-                                        requestStatus === "success"
-                                      }
-                                    >
-                                      {requestStatus === "loading"
-                                        ? "Sending..."
-                                        : requestStatus === "success"
-                                        ? "Request Sent!"
-                                        : "Send Request"}
-                                    </button>
-                                  </form>
-                                  {/* Visual response */}
-                                  {requestStatus === "success" &&
-                                    requestResponse && (
-                                      <div className="mt-4 p-4 rounded-lg bg-green-50 border border-green-200 text-green-800">
-                                        <div className="font-bold mb-1">
-                                          Request Sent!
-                                        </div>
-                                        <div className="text-xs">
-                                          Booking ID:{" "}
-                                          {requestResponse.booking_id}
-                                        </div>
-                                        <div className="text-xs">
-                                          Rate: {requestResponse.rate}
-                                        </div>
-                                        <div className="text-xs">
-                                          Comment: {requestResponse.comment}
-                                        </div>
-                                        <div className="text-xs">
-                                          Status: {requestResponse.status}
-                                        </div>
-                                      </div>
-                                    )}
-                                  {requestStatus === "error" && (
-                                    <div className="text-red-500 text-sm mt-2">
-                                      {requestError}
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  )}
-                </div>
-              )}
-            </>
-          )}
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-8">
-              <button
-                className="px-3 py-1 rounded border text-[#2954bd] border-[#2954bd] font-semibold disabled:opacity-50"
-                disabled={page === 1}
-                onClick={() => setPage(page - 1)}
-              >
-                Previous
-              </button>
-              <span className="text-gray-700">
-                Page {page} of {totalPages}
-              </span>
-              <button
-                className="px-3 py-1 rounded border text-[#2954bd] border-[#2954bd] font-semibold disabled:opacity-50"
-                disabled={page === totalPages}
-                onClick={() => setPage(page + 1)}
-              >
-                Next
-              </button>
-            </div>
-          )}
-          {checkoutMessage && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-4 text-center">
-              {checkoutMessage}
-            </div>
-          )}
+        {/* Desktop Sidebar */}
+        <div className="w-64 bg-white shadow-lg hidden md:block">
+          <SidebarProfile userType="staff" />
         </div>
-      </main>
-    </div>
+
+        <main className="flex-1">
+          <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+            <header className="flex justify-between items-center mb-6">
+              <div className="text-left">
+                <h1 className="text-4xl lg:text-5xl font-bold text-gray-900">
+                  Jobs
+                </h1>
+              </div>
+              {/* Mobile menu button */}
+              <div className="md:hidden">
+                <button
+                  type="button"
+                  className="-ml-0.5 -mt-0.5 inline-flex h-12 w-12 items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#3464b4]"
+                  onClick={() => setIsSidebarOpen(true)}
+                >
+                  <span className="sr-only">Open sidebar</span>
+                  <Bars3Icon className="h-6 w-6" aria-hidden="true" />
+                </button>
+              </div>
+            </header>
+
+            <div className="border-b border-gray-200 mb-8">
+              <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                <button
+                  onClick={() => setActiveTab("active")}
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "active"
+                      ? "border-[#3464b4] text-[#3464b4]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  Active Jobs
+                </button>
+                <button
+                  onClick={() => setActiveTab("myrequests")}
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "myrequests"
+                      ? "border-[#3464b4] text-[#3464b4]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  My Requests
+                </button>
+                <button
+                  onClick={() => setActiveTab("history")}
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "history"
+                      ? "border-[#3464b4] text-[#3464b4]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  History
+                </button>
+              </nav>
+            </div>
+
+            {renderContent()}
+          </div>
+        </main>
+      </div>
+    </>
   );
 }

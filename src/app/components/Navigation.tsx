@@ -1,25 +1,43 @@
+// src/app/components/Navigation.tsx
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bars3Icon, XMarkIcon, ChevronDownIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import {
+  UserCircleIcon,
+  HomeIcon,
+  InformationCircleIcon,
+  RectangleGroupIcon,
+  EnvelopeIcon,
+  ArrowRightOnRectangleIcon // For login/signup on mobile
+} from '@heroicons/react/24/outline'; // Add icons for bottom nav
 import Link from 'next/link';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
+import { usePathname } from 'next/navigation';
 
-export default function Navigation({ minimal = false }: { minimal?: boolean }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isSignupOpen, setIsSignupOpen] = useState(false);
+export default function Navigation() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [scrolled, setScrolled] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const { user, isLoading } = useUser();
+  const pathname = usePathname();
+
+  // Handle scroll for shrinking effect
+  useEffect(() => {
+    const handleScroll = () => {
+      const isScrolled = window.scrollY > 50; // Shrink after 50px scroll
+      if (isScrolled !== scrolled) {
+        setScrolled(isScrolled);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [scrolled]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsSignupOpen(false);
-      }
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
       }
@@ -28,204 +46,198 @@ export default function Navigation({ minimal = false }: { minimal?: boolean }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleMobileMenuClick = () => {
-    setIsMenuOpen(!isMenuOpen);
+  const navLinks = [
+    { name: 'Home', href: '/', icon: HomeIcon },
+    { name: 'Features', href: '#features', icon: InformationCircleIcon },
+    { name: 'How We Work', href: '#how-it-works', icon: RectangleGroupIcon },
+    { name: 'Contact', href: '#contact', icon: EnvelopeIcon },
+  ];
+
+  // Determine if a link is active for highlighting
+  const isActive = (href: string) => {
+    if (href === '/') {
+      return pathname === '/';
+    }
+    // For hash links, check if we are on the home page and the hash matches
+    if (href.startsWith('#')) {
+      return pathname === '/' && window.location.hash === href;
+    }
+    // For other routes, direct match
+    return pathname === href;
   };
 
   return (
-    <nav className="fixed w-full bg-white/80 backdrop-blur-md z-50 border-b border-gray-200 rounded-b-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
-          <div className="flex-shrink-0">
-            <Link href="/" className="text-2xl font-bold text-brand-dark hover:text-brand-accent">
+    <>
+      {/* Desktop Navigation (Top Bar) */}
+      <motion.nav
+        className={`fixed w-full bg-white/80 backdrop-blur-md z-50 border-b border-gray-200 transition-all duration-300 ease-in-out ${scrolled ? 'md:rounded-b-xl' : ''}`}
+        initial={false}
+        animate={scrolled ? "scrolled" : "top"}
+        variants={{
+          top: { height: 64, paddingTop: 16, paddingBottom: 16 },
+          scrolled: { height: 56, paddingTop: 8, paddingBottom: 8 },
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-full items-center">
+          {/* Logo */}
+          <motion.div
+            className="flex-shrink-0"
+            variants={{
+              top: { scale: 1 },
+              scrolled: { scale: 0.9 },
+            }}
+            transition={{ duration: 0.3 }}
+          >
+            <Link href="/" className="text-2xl font-bold text-gray-900 hover:text-blue-700 whitespace-nowrap">
               TheOpenShift
             </Link>
-          </div>
+          </motion.div>
 
-          {/* Desktop Navigation */}
-          {!minimal && (
-            <div className="hidden md:flex space-x-8">
-              <a href="#features" className="text-gray-600 hover:text-brand-dark">Features</a>
-              <a href="#how-it-works" className="text-gray-600 hover:text-brand-dark">How it Works</a>
-              <a href="#contact" className="text-gray-600 hover:text-brand-dark">Contact</a>
-              <Link href="/pricing" className="text-gray-600 hover:text-brand-dark">Pricing</Link>
-            </div>
-          )}
+          {/* Desktop Navigation Links */}
+          <div className="hidden md:flex items-center space-x-8">
+            {navLinks.map((link) => (
+              <Link
+                key={link.name}
+                href={link.href}
+                className={`relative text-gray-600 hover:text-blue-700 font-medium transition-colors ${
+                  isActive(link.href) ? 'text-blue-700' : ''
+                }`}
+              >
+                {link.name}
+                {isActive(link.href) ? (
+                  <motion.span
+                    layoutId="underline"
+                    className="absolute left-0 right-0 bottom-[-5px] h-[2px] bg-blue-700"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                ) : null}
+              </Link>
+            ))}
+          </div>
 
           {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
             {!isLoading && (
-              <>
-                {user ? (
-                  <div className="relative" ref={profileRef}>
-                    <button
-                      onClick={() => setIsProfileOpen(!isProfileOpen)}
-                      className="w-10 h-10 rounded-full overflow-hidden bg-brand-dark text-white flex items-center justify-center font-semibold hover:bg-brand-accent transition-colors"
-                    >
-                      {user.picture ? (
-                        <Image
-                          src={user.picture}
-                          alt={user.name || 'User'}
-                          width={40}
-                          height={40}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        user.name?.[0]?.toUpperCase() || 'U'
-                      )}
-                    </button>
-                    {isProfileOpen && (
-                      <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                        <div className="py-1">
-                          <Link
-                            href="/profile"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-bgLight"
-                          >
-                            Profile
-                          </Link>
-                          <a
-                            href="/api/auth/logout"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-bgLight"
-                          >
-                            Sign out
-                          </a>
-                        </div>
-                      </div>
+              user ? (
+                <div className="relative" ref={profileRef}>
+                  <button
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                    className="w-10 h-10 rounded-full overflow-hidden bg-blue-700 text-white flex items-center justify-center font-semibold hover:bg-blue-800 transition-colors"
+                  >
+                    {user.picture ? (
+                      <Image
+                        src={user.picture}
+                        alt={user.name || 'User'}
+                        width={40}
+                        height={40}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      user.name?.[0]?.toUpperCase() || <UserCircleIcon className="w-6 h-6" />
                     )}
-                  </div>
-                ) : (
-                  !minimal && (
-                    <>
-                      <a
-                        href="/api/auth/login?audience=https://api.theopenshift.com"
-                        className="px-4 py-2 text-sm font-medium text-brand-dark hover:text-brand-accent rounded-md border border-brand-dark"
-                      >
-                        Log in
-                      </a>
-                      <div className="relative" ref={dropdownRef}>
-                        <button
-                          className="px-4 py-2 text-sm font-medium text-white bg-brand-dark rounded-md hover:bg-brand-accent flex items-center gap-1"
-                          onClick={() => setIsSignupOpen(!isSignupOpen)}
-                          aria-haspopup="true"
-                          aria-expanded={isSignupOpen}
+                  </button>
+                  {isProfileOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10"
+                    >
+                      <div className="py-1">
+                        <Link
+                          href="/profile"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
-                          Sign up
-                          <ChevronDownIcon className="w-4 h-4" />
-                        </button>
-                        {isSignupOpen && (
-                          <div className="absolute right-0 mt-2 w-[400px] rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                            <div className="p-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                <a
-                                  href="/api/auth/login?screen_hint=signup&audience=https://api.theopenshift.com"
-                                  className="w-full px-4 py-3 text-sm font-medium text-white bg-brand-dark rounded-md hover:bg-brand-accent transition-colors duration-200"
-                                >
-                                  Sign up as Organization
-                                </a>
-                                <a
-                                  href="/api/auth/login?screen_hint=signup&audience=https://api.theopenshift.com"
-                                  className="w-full px-4 py-3 text-sm font-medium text-brand-dark border border-brand-dark rounded-md hover:bg-brand-bgLight transition-colors duration-200"
-                                >
-                                  Sign up as Staff
-                                </a>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                          Profile
+                        </Link>
+                        <a
+                          href="/api/auth/logout"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Sign out
+                        </a>
                       </div>
-                    </>
-                  )
-                )}
-              </>
+                    </motion.div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <motion.a
+                    href="/api/auth/login?audience=https://api.theopenshift.com"
+                    className="px-4 py-2 text-sm font-medium text-blue-700 hover:text-blue-800 rounded-md transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Log in
+                  </motion.a>
+                  <motion.a
+                    href="/api/auth/login?screen_hint=signup&audience=https://api.theopenshift.com"
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-md hover:bg-blue-800 transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Sign up
+                  </motion.a>
+                </>
+              )
             )}
           </div>
+        </div>
+      </motion.nav>
 
-          {/* Mobile menu button */}
-          {!minimal && (
-            <div className="md:hidden flex items-center">
-              <button
-                onClick={handleMobileMenuClick}
-                className="p-2 rounded-md text-gray-600 hover:bg-brand-bgLight"
-                aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+      {/* Mobile Navigation (Fixed Bottom Bar) */}
+      <div className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 md:hidden z-50 rounded-t-xl shadow-lg">
+        <div className="h-full flex justify-around items-center">
+          {navLinks.map((link) => (
+            <Link
+              key={link.name}
+              href={link.href}
+              className={`flex flex-col items-center justify-center p-2 text-xs font-medium transition-colors ${
+                isActive(link.href) ? 'text-blue-700' : 'text-gray-500 hover:text-blue-700'
+              }`}
+            >
+              <link.icon className="h-6 w-6 mb-1" />
+              {link.name}
+            </Link>
+          ))}
+          {/* Conditional Profile/Login for mobile */}
+          {!isLoading && (
+            user ? (
+              <Link
+                href="/profile"
+                className={`flex flex-col items-center justify-center p-2 text-xs font-medium transition-colors ${
+                  isActive('/profile') ? 'text-blue-700' : 'text-gray-500 hover:text-blue-700'
+                }`}
               >
-                {isMenuOpen ? (
-                  <XMarkIcon className="w-6 h-6" />
+                {user.picture ? (
+                  <Image
+                    src={user.picture}
+                    alt={user.name || 'User'}
+                    width={24}
+                    height={24}
+                    className="w-6 h-6 rounded-full object-cover mb-1"
+                  />
                 ) : (
-                  <Bars3Icon className="w-6 h-6" />
+                  <UserCircleIcon className="h-6 w-6 mb-1" />
                 )}
-              </button>
-            </div>
+                Profile
+              </Link>
+            ) : (
+              <a
+                href="/api/auth/login"
+                className={`flex flex-col items-center justify-center p-2 text-xs font-medium transition-colors ${
+                  isActive('/api/auth/login') ? 'text-blue-700' : 'text-gray-500 hover:text-blue-700'
+                }`}
+              >
+                <ArrowRightOnRectangleIcon className="h-6 w-6 mb-1" />
+                Login
+              </a>
+            )
           )}
         </div>
-
-        {/* Mobile Navigation */}
-        {!minimal && (
-          <div className={`md:hidden ${isMenuOpen ? 'block' : 'hidden'}`}>
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              <a href="#features" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-brand-dark">Features</a>
-              <a href="#how-it-works" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-brand-dark">How it Works</a>
-              <a href="#contact" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-brand-dark">Contact</a>
-              <Link href="/pricing" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-brand-dark">Pricing</Link>
-            </div>
-
-            <div className="pt-4 pb-3 border-t border-gray-200">
-              {!isLoading && (
-                <>
-                  {user ? (
-                    <>
-                      <div className="flex flex-col items-center justify-center px-3 py-2">
-                        <div className="w-16 h-16 rounded-full overflow-hidden bg-brand-dark text-white flex items-center justify-center font-semibold mb-2">
-                          {user.picture ? (
-                            <Image
-                              src={user.picture}
-                              alt={user.name || 'User'}
-                              width={64}
-                              height={64}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-2xl">{user.name?.[0]?.toUpperCase() || 'U'}</span>
-                          )}
-                        </div>
-                        <span className="text-gray-700 text-base font-semibold">{user.name}</span>
-                      </div>
-                      <Link
-                        href="/profile"
-                        className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-accent"
-                      >
-                        Profile
-                      </Link>
-                      <a
-                        href="/api/auth/logout"
-                        className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-accent"
-                      >
-                        Sign out
-                      </a>
-                    </>
-                  ) : (
-                    !minimal && (
-                      <>
-                        <a
-                          href="/api/auth/login?audience=https://api.theopenshift.com"
-                          className="block px-3 py-2 text-base font-medium text-brand-dark hover:text-brand-accent"
-                        >
-                          Log in
-                        </a>
-                        <a
-                          href="/api/auth/login?screen_hint=signup&audience=https://api.theopenshift.com"
-                          className="block px-3 py-2 text-base font-medium text-white bg-brand-dark rounded-md hover:bg-brand-accent"
-                        >
-                          Sign up
-                        </a>
-                      </>
-                    )
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        )}
       </div>
-    </nav>
+    </>
   );
 }

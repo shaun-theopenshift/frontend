@@ -1,295 +1,1038 @@
-'use client';
+// src/app/page.tsx
+"use client";
 
-import { useState } from 'react';
-import { ArrowRightIcon, CalendarIcon, UserGroupIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
-import Navigation from './components/Navigation';
-import { useUser } from '@auth0/nextjs-auth0/client';
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  ChangeEvent,
+  FocusEvent,
+  FormEvent,
+} from "react";
+import {
+  ArrowRightIcon,
+  CalendarIcon,
+  UserGroupIcon,
+  BuildingOfficeIcon,
+  PlusIcon, // Added for FAQ
+  MinusIcon, // Added for FAQ
+  PhoneIcon, // Added for contact info
+  EnvelopeIcon,
+  QuestionMarkCircleIcon, // Added for contact info
+} from "@heroicons/react/24/outline";
+import Navigation from "./components/Navigation";
+import { useUser } from "@auth0/nextjs-auth0/client";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  AnimatePresence,
+} from "framer-motion";
+import { Tab, Disclosure } from "@headlessui/react"; // Added Disclosure
+import CurvedLoop from "./components/CurvedText/CurvedText";
+import RotatingText from "./components/RotatingText/RotatingText";
+
+// Define interfaces for better type safety
+interface FormDataState {
+  name: string;
+  email: string;
+  message: string;
+}
+
+interface FormErrorsState {
+  name: boolean;
+  email: boolean;
+  message: boolean;
+}
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('organization');
+  const [activeTab, setActiveTab] = useState("organization");
   const { user, isLoading } = useUser();
 
+  const ctaFooterRef = useRef(null);
+
+  // Form states for contact form
+  const [formData, setFormData] = useState<FormDataState>({
+    name: "",
+    email: "",
+    message: "",
+  });
+  const [formErrors, setFormErrors] = useState<FormErrorsState>({
+    name: false,
+    email: false,
+    message: false,
+  });
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Data for the feature cards
+  const featureCards = [
+    {
+      title: "Easy Shift Management:",
+      description:
+        "Effortlessly post, manage, and fill shifts with our intuitive and user-friendly platform.",
+      icon: "https://cdn-icons-png.flaticon.com/512/3069/3069176.png",
+    },
+    {
+      title: "Qualified Staff:",
+      description:
+        "Access a vast pool of verified and highly qualified aged care professionals ready to work.",
+      icon: "https://cdn-icons-png.flaticon.com/512/3069/3069177.png",
+    },
+    {
+      title: "Organization Solutions:",
+      description:
+        "Streamline your workforce management with powerful tools designed for aged care facilities.",
+      icon: "https://cdn-icons-png.flaticon.com/512/3069/3069178.png",
+    },
+    {
+      title: "Dedicated Support:",
+      description:
+        "Receive 24/7 assistance and guidance from our dedicated support team, ensuring smooth operations.",
+      icon: "https://cdn-icons-png.flaticon.com/512/3069/3069179.png",
+    },
+  ];
+
+  // Data for the FAQ section
+  const faqItems = [
+    {
+      question: "What is TheOpenShift?",
+      answer:
+        "TheOpenShift is a platform designed to streamline the process of finding and managing shifts in aged care facilities, connecting qualified staff with organizations seamlessly.",
+    },
+    {
+      question: "How do I sign up as a staff member?",
+      answer:
+        "You can sign up as a staff member by clicking on the 'Sign Up' button in the hero section and creating your profile with your qualifications and preferences.",
+    },
+    {
+      question: "How do organizations post shifts?",
+      answer:
+        "Organizations can easily set up their profile, define staffing requirements, and then quickly create and publish shifts with all necessary details.",
+    },
+    {
+      question: "Is there support available?",
+      answer:
+        "Yes, we offer 24/7 dedicated support to ensure smooth operations for both staff and organizations.",
+    },
+    {
+      question: "What kind of professionals can join TheOpenShift?",
+      answer:
+        "Our platform is for verified and highly qualified aged care professionals looking for work opportunities.",
+    },
+    {
+      question: "Can I manage my shifts through the platform?",
+      answer:
+        "Yes, staff members can browse a wide range of shifts and apply for those that best fit their schedule and expertise, and organizations can efficiently review applications and manage their workforce.",
+    },
+  ];
+
+  // For the parallax effect on the illustration image
+  const { scrollYProgress } = useScroll();
+  const imageParallaxY = useTransform(scrollYProgress, [0, 1], ["0%", "-20%"]);
+
+  // Ref for the new curved background element
+  const curvedBgRef = useRef(null);
+  const { scrollYProgress: curvedBgScrollYProgress } = useScroll({
+    target: curvedBgRef,
+    offset: ["start end", "end start"],
+  });
+  const curvedBgScale = useTransform(
+    curvedBgScrollYProgress,
+    [0, 1], // Scroll progress from 0 to 1
+    [0.1, 2] // Scale from 10% to 200%
+  );
+  const curvedBgOpacity = useTransform(
+    curvedBgScrollYProgress,
+    [1, 0], // Opacity changes over scroll
+    [1, 0] // Fades in and then out
+  );
+
+  // Rotating text logic for "How We Work" section
+  const rotatingWords = ["Work", "Think", "Build", "Deliver"];
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // FIX: Added type for prevIndex
+      setCurrentWordIndex(
+        (prevIndex: number) => (prevIndex + 1) % rotatingWords.length
+      );
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Form validation and submission logic
+  const validateField = useCallback(
+    (name: keyof FormDataState, value: string): boolean => {
+      // FIX: Added types for name and value
+      let isValid = true;
+      if (name === "email") {
+        isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+      } else {
+        isValid = value.trim() !== "";
+      }
+      setFormErrors((prev) => ({ ...prev, [name]: !isValid })); // FIX: [name] is now correctly typed
+      return isValid;
+    },
+    []
+  );
+
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    // FIX: Added type for event
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name as keyof FormDataState]: value })); // FIX: Assert name as keyof FormDataState
+    // Validate instantly for better UX
+    validateField(name as keyof FormDataState, value); // FIX: Assert name as keyof FormDataState
+  };
+
+  const handleBlur = (
+    e: FocusEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    // FIX: Added type for event
+    const { name, value } = e.target;
+    validateField(name as keyof FormDataState, value); // FIX: Assert name as keyof FormDataState
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    // FIX: Added type for event
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitMessage("");
+    setIsSubmitted(false);
+
+    let allFieldsValid = true;
+    const newFormErrors: FormErrorsState = {
+      name: false,
+      email: false,
+      message: false,
+    }; // FIX: Explicitly type newFormErrors
+    for (const key in formData) {
+      // FIX: Assert key as keyof FormDataState
+      const typedKey = key as keyof FormDataState;
+      const isValid = validateField(typedKey, formData[typedKey]); // FIX: Using typedKey for indexing
+      if (!isValid) {
+        newFormErrors[typedKey] = true; // FIX: Using typedKey for indexing
+        allFieldsValid = false;
+      }
+    }
+    setFormErrors(newFormErrors);
+
+    if (!allFieldsValid) {
+      setIsSubmitting(false);
+      setSubmitMessage("Please fill in all required fields correctly.");
+      setIsSubmitted(true);
+      return;
+    }
+
+    try {
+      // Submit to your new API route
+      const response = await fetch("/api/submit-contact-form", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSubmitMessage(
+          "Message sent successfully! We'll get back to you soon."
+        );
+        setFormData({ name: "", email: "", message: "" }); // Clear form
+        setFormErrors({ name: false, email: false, message: false }); // Clear errors
+      } else {
+        console.error("Submission error:", result);
+        setSubmitMessage(
+          result.message || "Failed to send message. Please try again later."
+        );
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      setSubmitMessage("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+      setIsSubmitted(true);
+    }
+  };
+
   return (
-    <main className="flex min-h-screen flex-col">
+    <main className="flex min-h-screen flex-col font-ubuntu">
+      <style jsx global>{`
+        @import url("https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap");
+        .font-ubuntu {
+          font-family: "Ubuntu", sans-serif;
+        }
+      `}</style>
       <Navigation />
 
-      {/* Hero Section  with logo hidden in mobile verison, keeping it for later use if needed
-      <section className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#e6f2f2] to-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-8 sm:gap-12">
-            <div className="text-center lg:text-left flex-1 w-full">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-2">
-                Bridging Aged Care Organizations and Staff through Meaningful{' '}
-                <span className="text-[#67b5b5]">Opportunities</span>
-              </h1>
+      {/* Hero Section */}
+      <section className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#fff5e2] to-white relative overflow-hidden">
+        {/* New curved element behind the image */}
+        <motion.div
+          ref={curvedBgRef}
+          className="absolute right-0 bottom-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#fe7239] rounded-full z-0"
+          style={{ scale: curvedBgScale, opacity: curvedBgOpacity}}
+        ></motion.div>
 
-              <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8 max-w-3xl mx-auto lg:mx-0">
-                TheOpenShift streamlines the process of finding and managing shifts in aged care facilities.
-                Join our platform to connect staff with organizations seamlessly.
-              </p>
-              <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-3 sm:gap-4">
-                <button className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-medium text-white bg-[#67b5b5] rounded-md hover:bg-[#4a9e9e] flex items-center justify-center">
-                  Sign Up
-                  <ArrowRightIcon className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
-                </button>
-                <button className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-medium text-[#67b5b5] border border-[#67b5b5] rounded-md hover:bg-[#e6f2f2]">
-                  Log In
-                </button>
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="flex flex-col-reverse lg:flex-row items-center justify-between gap-8 sm:gap-12">
+            <div className="text-center lg:text-left flex-1 w-full">
+              <motion.h1
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#454640] mb-4 leading-tight"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+              >
+                Thoughtful care for every life - powered by{" "}
+                <span className="text-[#3464b4]">purpose</span> and
+                <span className="text-[#3464b4]"> intelligence</span>
+              </motion.h1>
+
+              <motion.p
+                className="text-base sm:text-lg md:text-xl text-gray-600 mb-8 max-w-3xl mx-auto lg:mx-0"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
+                TheOpenShift streamlines the process of finding and managing
+                shifts in aged care facilities. Join our platform to connect
+                staff with organizations seamlessly.
+              </motion.p>
+
+              <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
+                {!isLoading &&
+                  (user ? (
+                    <motion.a
+                      href="/profile"
+                      className="w-full sm:w-auto px-8 py-3 text-base sm:text-lg font-medium text-white bg-[#3464b4] rounded-lg hover:bg-blue-800 flex items-center justify-center shadow-md"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Profile
+                    </motion.a>
+                  ) : (
+                    <>
+                      <motion.a
+                        href="/api/auth/login?screen_hint=signup"
+                        className="w-full sm:w-auto px-8 py-3 text-base sm:text-lg font-medium text-white bg-[#3464b4] rounded-lg hover:bg-blue-800 flex items-center justify-center shadow-md"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        Sign Up
+                        <ArrowRightIcon className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
+                      </motion.a>
+                      <motion.a
+                        href="/api/auth/login"
+                        className="w-full sm:w-auto px-8 py-3 text-base sm:text-lg font-medium text-gray-700 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 flex items-center justify-center shadow-sm"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        Log In
+                      </motion.a>
+                    </>
+                  ))}
               </div>
             </div>
 
-            <div className="hidden lg:block flex-1">
-              <svg
-                width="100%"
-                height="100%"
-                viewBox="0 0 500 500"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-full h-auto max-w-lg mx-auto"
-              >
-                <path d="M250 50C138.5 50 50 138.5 50 250C50 361.5 138.5 450 250 450C361.5 450 450 361.5 450 250C450 138.5 361.5 50 250 50ZM250 400C166.5 400 100 333.5 100 250C100 166.5 166.5 100 250 100C333.5 100 400 166.5 400 250C400 333.5 333.5 400 250 400Z" fill="#67b5b5" fillOpacity="0.2" />
-                <path d="M250 150C194.8 150 150 194.8 150 250C150 305.2 194.8 350 250 350C305.2 350 350 305.2 350 250C350 194.8 305.2 150 250 150ZM250 300C211.4 300 200 288.6 200 250C200 211.4 211.4 200 250 200C288.6 200 300 211.4 300 250C300 288.6 288.6 300 250 300Z" fill="#67b5b5" fillOpacity="0.3" />
-                <path d="M250 200C228.9 200 200 228.9 200 250C200 271.1 228.9 300 250 300C271.1 300 300 271.1 300 250C300 228.9 271.1 200 250 200Z" fill="#67b5b5" fillOpacity="0.4" />
-                <path d="M250 225C238.4 225 225 238.4 225 250C225 261.6 238.4 275 250 275C261.6 275 275 261.6 275 250C275 238.4 261.6 225 250 225Z" fill="#67b5b5" />
-                <path d="M150 150L200 200M300 200L350 150M150 350L200 300M300 300L350 350" stroke="#67b5b5" strokeWidth="4" strokeLinecap="round" />
-              </svg>
-            </div>
+            <motion.div
+              className="flex-1 w-full flex justify-center lg:justify-end" // Adjusted to justify-end for image on right
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              style={{ y: imageParallaxY }}
+            >
+              <img
+                src="/illus1.png"
+                alt="TheOpenShift Illustration"
+                className="w-full h-auto max-w-lg mx-auto lg:mx-0 rounded-3xl shadow-lg"
+              />
+            </motion.div>
           </div>
         </div>
       </section>
-      */}
-      {/* Hero Section */}
-<section className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#2954bd]/100 to-white">
-  <div className="max-w-7xl mx-auto">
-    <div className="flex flex-col-reverse lg:flex-row items-center justify-between gap-8 sm:gap-12">
 
-      {/* Hero Text Content */}
-      <div className="text-center lg:text-left flex-1 w-full">
-        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-2">
-          Thoughtful care for every life - powered by {' '}
-          <span className="text-brand-dark">purpose</span>{' '}
-           and<span className="text-brand-dark">{' '}intelligence</span>
-        </h1>
-
-        <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8 max-w-3xl mx-auto lg:mx-0">
-          TheOpenShift streamlines the process of finding and managing shifts in aged care facilities.
-          Join our platform to connect staff with organizations seamlessly.
-        </p>
-
-        <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-3 sm:gap-4">
-          {!isLoading && (
-            user ? (
-              <a
-                href="/profile"
-                className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-medium text-white bg-brand-dark rounded-md hover:bg-brand-accent flex items-center justify-center"
-              >
-                Profile
-              </a>
-            ) : (
-              <>
-                <a
-                  href="/api/auth/login?screen_hint=signup"
-                  className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-medium text-white bg-brand-dark rounded-md hover:bg-brand-mint flex items-center justify-center"
-                >
-                  Sign Up
-                  <ArrowRightIcon className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
-                </a>
-                <a
-                  href="/api/auth/login"
-                  className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-medium text-brand-dark border border-brand-dark rounded-md hover:bg-brand-bgLight"
-                >
-                  Log In
-                </a>
-              </>
-            )
-          )}
-        </div>
-      </div>
-
-      {/* SVG Illustration – now visible on all screen sizes and on top in mobile */}
-      <div className="flex-1 w-full">
-        <img
-          src="/illus1.png"
-          alt="TheOpenShift Illustration"
-          className="w-full h-auto max-w-lg mx-auto rounded-3xl"
-        />
-      </div>
-      
-    </div>
-  </div>
-</section>
-
-
-      {/* Features Section */}
-      <section id="features" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Features Section - Changed background for visibility */}
+      <section
+        id="features"
+        className="py-20 text-gray-900 relative bg-[#ffeecf]"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900">Why Choose TheOpenShift?</h2>
-            <p className="mt-4 text-xl text-gray-600">Streamline your aged care staffing needs</p>
+            <motion.p
+              className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#454640] mb-2 flex flex-col sm:flex-row items-center justify-center gap-2"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.6 }}
+            >
+              <span>Why Choose</span>
+              <span className="bg-[#3464b4] text-white px-4 py-2 rounded-full whitespace-nowrap">
+                TheOpenShift
+              </span>
+            </motion.p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-              <CalendarIcon className="w-12 h-12 text-brand-dark mb-4" />
-              <h3 className="text-xl font-semibold mb-2 text-gray-900">Easy Shift Management</h3>
-              <p className="text-gray-600">Post and manage shifts effortlessly with our intuitive platform.</p>
-            </div>
-            <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-              <UserGroupIcon className="w-12 h-12 text-brand-dark mb-4" />
-              <h3 className="text-xl font-semibold mb-2 text-gray-900">Qualified Staff</h3>
-              <p className="text-gray-600">Access a pool of verified and qualified aged care professionals.</p>
-            </div>
-            <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-              <BuildingOfficeIcon className="w-12 h-12 text-brand-dark mb-4" />
-              <h3 className="text-xl font-semibold mb-2 text-gray-900">Organization Solutions</h3>
-              <p className="text-gray-600">Comprehensive tools for aged care facilities to manage their workforce.</p>
-            </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-8">
+            {featureCards.map((card, index) => (
+              <motion.div
+                key={index}
+                className="p-6 bg-white rounded-xl shadow-md border border-gray-100 flex flex-col sm:flex-row items-center text-center sm:text-left"
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+              >
+                <img
+                  src={card.icon}
+                  alt={card.title.replace(":", " Icon")}
+                  className="w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-0 sm:mr-6"
+                />
+                <div>
+                  <h3 className="text-xl font-semibold mb-2 text-gray-900">
+                    {card.title}
+                  </h3>
+                  <p className="text-gray-600">{card.description}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* How it Works Section */}
-      <section id="how-it-works" className="py-20 bg-[#f5f9f9]">
+      <section id="how-it-works" className="py-20 bg-[#fff5e2] rounded-3xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900">How It Works</h2>
-            <p className="mt-4 text-xl text-gray-600">Simple steps to get started</p>
+            <motion.h2
+              className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4 flex flex-col sm:flex-row items-center justify-center gap-2"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.6 }}
+            >
+              <span>How We</span>
+              <RotatingText
+                texts={["Work ?", "Think ?", "Build ?", "Deliver ?"]}
+                mainClassName="px-2 sm:px-2 md:px-3 bg-[#3464b4] text-white overflow-hidden py-0.5 sm:py-1 md:py-2 justify-center rounded-lg"
+                staggerFrom={"last"}
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "-120%" }}
+                staggerDuration={0.025}
+                splitLevelClassName="overflow-hidden pb-0.5 sm:pb-1 md:pb-1"
+                transition={{ type: "spring", damping: 30, stiffness: 400 }}
+                rotationInterval={2000}
+              />
+            </motion.h2>
+            <motion.p
+              className="mt-4 text-xl text-gray-600"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              Simple steps to get started
+            </motion.p>
 
-            {/* Toggle Buttons */}
-            <div className="flex justify-center space-x-8 mt-8">
-              <button
-                className={`text-lg font-medium pb-2 transition-all duration-200 ${activeTab === 'staff'
-                  ? 'text-brand-dark border-b-2 border-brand-dark'
-                  : 'text-gray-600 hover:text-brand-dark'
-                  }`}
-                onClick={() => setActiveTab('staff')}
-              >
-                For Staff
-              </button>
-              <button
-                className={`text-lg font-medium pb-2 transition-all duration-200 ${activeTab === 'organization'
-                  ? 'text-brand-dark border-b-2 border-brand-dark'
-                  : 'text-gray-600 hover:text-brand-dark'
-                  }`}
-                onClick={() => setActiveTab('organization')}
-              >
-                For Organization
-              </button>
-            </div>
+            <Tab.Group
+              defaultIndex={activeTab === "organization" ? 0 : 1}
+              onChange={(index) =>
+                setActiveTab(index === 0 ? "staff" : "organization")
+              }
+            >
+              <Tab.List className="flex justify-center space-x-4 sm:space-x-8 mt-8 p-1 bg-white rounded-full shadow-lg max-w-md mx-auto">
+                <Tab
+                  as={motion.button}
+                  className={({ selected }) =>
+                    `relative w-1/2 py-2.5 text-sm sm:text-base leading-5 font-medium rounded-full transition-colors duration-300 focus:outline-none ${
+                      selected
+                        ? "text-white"
+                        : "text-[#3464b4] hover:bg-blue-50"
+                    }`
+                  }
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {({ selected }) => (
+                    <>
+                      {selected && (
+                        <motion.span
+                          className="absolute inset-0 z-0 bg-[#3464b4] rounded-full"
+                          layoutId="bubble"
+                          transition={{
+                            type: "spring",
+                            stiffness: 500,
+                            damping: 30,
+                          }}
+                        />
+                      )}
+                      <span className="relative z-10">For Staff</span>
+                    </>
+                  )}
+                </Tab>
+                <Tab
+                  as={motion.button}
+                  className={({ selected }) =>
+                    `relative w-1/2 py-2.5 text-sm sm:text-base leading-5 font-medium rounded-full transition-colors duration-300 focus:outline-none ${
+                      selected
+                        ? "text-white"
+                        : "text-[#3464b4] hover:bg-blue-50"
+                    }`
+                  }
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {({ selected }) => (
+                    <>
+                      {selected && (
+                        <motion.span
+                          className="absolute inset-0 z-0 bg-[#3464b4] rounded-full"
+                          layoutId="bubble"
+                          transition={{
+                            type: "spring",
+                            stiffness: 500,
+                            damping: 30,
+                          }}
+                        />
+                      )}
+                      <span className="relative z-10">For Organization</span>
+                    </>
+                  )}
+                </Tab>
+              </Tab.List>
+
+              <Tab.Panels className="mt-12">
+                <Tab.Panel>
+                  <motion.div
+                    key="staff-panel"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"
+                  >
+                    <motion.div
+                      className="flex flex-col items-center text-center p-6 bg-white rounded-xl shadow-lg border border-[#fac8b4]"
+                      initial={{ opacity: 0, y: 50 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.5 }}
+                      transition={{ duration: 0.6 }}
+                    >
+                      <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-[#3464b4] text-3xl font-bold mb-6 shadow-md border-4 border-[#fe7239]">
+                        <UserGroupIcon className="w-10 h-10" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-3 text-gray-900">
+                        Create Your Profile
+                      </h3>
+                      <p className="text-gray-600">
+                        Sign up and complete your profile with your
+                        qualifications and preferences to showcase your skills.
+                      </p>
+                    </motion.div>
+                    <motion.div
+                      className="flex flex-col items-center text-center p-6 bg-white rounded-xl shadow-lg border border-[#fac8b4]"
+                      initial={{ opacity: 0, y: 50 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.5 }}
+                      transition={{ duration: 0.6, delay: 0.2 }}
+                    >
+                      <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-[#3464b4] text-3xl font-bold mb-6 shadow-md border-4 border-[#fe7239]">
+                        <CalendarIcon className="w-10 h-10" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-3 text-gray-900">
+                        Browse Opportunities
+                      </h3>
+                      <p className="text-gray-600">
+                        Explore a wide range of shifts and apply for those that
+                        best fit your schedule and expertise.
+                      </p>
+                    </motion.div>
+                    <motion.div
+                      className="flex flex-col items-center text-center p-6 bg-white rounded-xl shadow-lg border border-[#fac8b4]"
+                      initial={{ opacity: 0, y: 50 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.5 }}
+                      transition={{ duration: 0.6, delay: 0.4 }}
+                    >
+                      <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-[#3464b4] text-3xl font-bold mb-6 shadow-md border-4 border-[#fe7239]">
+                        <ArrowRightIcon className="w-10 h-10" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-3 text-gray-900">
+                        Start Working
+                      </h3>
+                      <p className="text-gray-600">
+                        Get verified quickly and effortlessly, so you can start
+                        your shifts with confidence and without unnecessary
+                        delays.
+                      </p>
+                    </motion.div>
+                  </motion.div>
+                </Tab.Panel>
+
+                <Tab.Panel>
+                  <motion.div
+                    key="organization-panel"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"
+                  >
+                    <motion.div
+                      className="flex flex-col items-center text-center p-6 bg-white rounded-xl shadow-lg border border-[#fac8b4]"
+                      initial={{ opacity: 0, y: 50 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.5 }}
+                      transition={{ duration: 0.6 }}
+                    >
+                      <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-[#3464b4] text-3xl font-bold mb-6 shadow-md border-4 border-[#fe7239]">
+                        <BuildingOfficeIcon className="w-10 h-10" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-3 text-gray-900">
+                        Create Your Organization Profile
+                      </h3>
+                      <p className="text-gray-600">
+                        Easily set up your organization's profile and define
+                        your specific staffing requirements.
+                      </p>
+                    </motion.div>
+                    <motion.div
+                      className="flex flex-col items-center text-center p-6 bg-white rounded-xl shadow-lg border border-[#fac8b4]"
+                      initial={{ opacity: 0, y: 50 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.5 }}
+                      transition={{ duration: 0.6, delay: 0.2 }}
+                    >
+                      <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-[#3464b4] text-3xl font-bold mb-6 shadow-md border-4 border-[#fe7239]">
+                        <CalendarIcon className="w-10 h-10" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-3 text-gray-900">
+                        Post Shifts
+                      </h3>
+                      <p className="text-gray-600">
+                        Quickly create and publish shifts, specifying all
+                        necessary details and preferred schedules.
+                      </p>
+                    </motion.div>
+                    <motion.div
+                      className="flex flex-col items-center text-center p-6 bg-white rounded-xl shadow-lg border border-[#fac8b4]"
+                      initial={{ opacity: 0, y: 50 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.5 }}
+                      transition={{ duration: 0.6, delay: 0.4 }}
+                    >
+                      <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-[#3464b4] text-3xl font-bold mb-6 shadow-md border-4 border-[#fe7239]">
+                        <UserGroupIcon className="w-10 h-10" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-3 text-gray-900">
+                        Manage Your Workforce
+                      </h3>
+                      <p className="text-gray-600">
+                        Efficiently review applications, manage your staff, and
+                        track shift fulfillment with ease.
+                      </p>
+                    </motion.div>
+                  </motion.div>
+                  <div className="text-center mt-12">
+                    <motion.button
+                      className="px-8 py-3 text-lg font-medium text-[#3464b4] border border-[#fe7239] hover:text-white rounded-lg hover:bg-[#fe7239] shadow-sm"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Know More
+                    </motion.button>
+                  </div>
+                </Tab.Panel>
+              </Tab.Panels>
+            </Tab.Group>
           </div>
-
-          {/* Organization Steps */}
-          {activeTab === 'organization' && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">1</div>
-                  <div className="h-60 rounded-lg mb-4 flex items-center justify-center">
-                    <img src="/icons/svg_og_1.svg" alt="Create Profile" className="w-60 h-60" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2 text-gray-900">Create Your Organization Profile</h3>
-                  <p className="text-gray-600">Set up your organizations profile and specify your staffing needs.</p>
-                </div>
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">2</div>
-                  <div className="h-60 rounded-lg mb-4 flex items-center justify-center">
-                    <img src="/icons/svg_og_2.svg" alt="Create Profile" className="w-60 h-60" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2 text-gray-900">Post Shifts</h3>
-                  <p className="text-gray-600">Create and manage shifts with specific requirements and schedules.</p>
-                </div>
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">3</div>
-                  <div className="h-60 rounded-lg mb-4 flex items-center justify-center">
-                    <img src="/icons/svg_og_3.svg" alt="Create Profile" className="w-60 h-60" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2 text-gray-900">Manage Your Workforce</h3>
-                  <p className="text-gray-600">Review applications, manage staff, and track shift fulfillment.</p>
-                </div>
-              </div>
-              <div className="text-center mt-12">
-                <button className="px-8 py-3 text-lg font-medium text-brand-dark border border-brand-dark rounded-md hover:bg-brand-bgLight">
-                  Know More
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* Staff Steps */}
-          {activeTab === 'staff' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">1</div>
-                <div className="h-60 rounded-lg mb-4 flex items-center justify-center">
-                  <img src="/icons/svg_hiw_1.svg" alt="Create Profile" className="w-60 h-60" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-gray-900">Create Your Profile</h3>
-                <p className="text-gray-600">Sign up and complete your profile with your qualifications and preferences.</p>
-              </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">2</div>
-                <div className="h-60  rounded-lg mb-4 flex items-center justify-center">
-                  <img src="/icons/svg_hiw_2.svg" alt="Create Profile" className="w-60 h-60" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-gray-900">Browse Opportunities</h3>
-                <p className="text-gray-600">Find and apply for shifts that match your skills and availability.</p>
-              </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-brand-dark rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">3</div>
-                <div className="h-60 rounded-lg mb-4 flex items-center justify-center">
-                  <img src="/icons/svg_hiw_3.svg" alt="Create Profile" className="w-60 h-60" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-gray-900">Start Working</h3>
-                <p className="text-gray-600">Get confirmed and start your shift with our seamless process.</p>
-              </div>
-            </div>
-          )}
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section id="contact" className="py-20 bg-brand-dark">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">Ready to Get Started?</h2>
-          <p className="text-xl text-brand-bgLight mb-8">Join TheOpenShift today and transform how you manage aged care staffing.</p>
-          <button className="px-8 py-3 text-lg font-medium text-brand-dark bg-white rounded-md hover:bg-brand-bgLight">
-            Sign Up Now
-          </button>
+      {/* FAQ Section */}
+      <section id="faq" className="py-20 bg-[#1a4154]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row lg:items-start gap-12">
+            {/* Left side: Heading */}
+            <div className="lg:w-1/3 text-center lg:text-left mb-8 lg:mb-0">
+              <motion.p
+                className="text-lg font-semibold text-[#fe7239] mb-2 flex items-center justify-center lg:justify-start gap-2"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.5 }}
+              >
+                <QuestionMarkCircleIcon className="w-5 h-5" />
+                Clear your doubts
+              </motion.p>
+              <motion.h2
+                className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+              >
+                Frequently Asked Questions?
+              </motion.h2>
+            </div>
+
+            {/* Right side: FAQ Items */}
+            <div className="lg:w-2/3 space-y-4">
+              {faqItems.map((item, index) => (
+                <motion.div
+                  key={index}
+                  className="bg-gray-50 rounded-xl shadow-sm border border-gray-100"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                >
+                  <Disclosure>
+                    {({ open }) => (
+                      <>
+                        <Disclosure.Button className="flex justify-between items-center w-full px-6 py-4 text-lg font-semibold text-left text-gray-900 focus:outline-none focus-visible:ring focus-visible:ring-blue-500 focus-visible:ring-opacity-75">
+                          <span>
+                            <span className="text-[#3464b4] mr-2">{`0${
+                              index + 1
+                            }.`}</span>
+                            {item.question}
+                          </span>
+                          <motion.span
+                            initial={false}
+                            animate={{ rotate: open ? 45 : 0 }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 260,
+                              damping: 20,
+                            }}
+                          >
+                            {open ? (
+                              <MinusIcon className="w-6 h-6 text-[#3464b4]" />
+                            ) : (
+                              <PlusIcon className="w-6 h-6 text-[#3464b4]" />
+                            )}
+                          </motion.span>
+                        </Disclosure.Button>
+                        <AnimatePresence>
+                          {open && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.3, ease: "easeInOut" }}
+                              className="overflow-hidden"
+                            >
+                              <Disclosure.Panel className="px-6 pb-4 text-gray-600">
+                                {item.answer}
+                              </Disclosure.Panel>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </>
+                    )}
+                  </Disclosure>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Form Section */}
+      <section id="contact" className="py-20 bg-[#fff5e2] text-[#454640]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row gap-12 items-center lg:items-start">
+            {/* Left side: Form */}
+            <motion.form
+              onSubmit={handleSubmit}
+              className="w-full lg:w-1/2 bg-white p-6 sm:p-8 rounded-xl shadow-lg space-y-6 relative"
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.7 }}
+            >
+              {/* Name Input */}
+              <motion.div
+                className="relative pb-6"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <label htmlFor="name" className="sr-only">
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  placeholder="Your Name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full px-5 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                    formErrors.name
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                      : formData.name.trim() !== ""
+                      ? "border-green-500 focus:border-green-500 focus:ring-green-500"
+                      : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  }`}
+                  required
+                />
+                {formErrors.name && (
+                  <p className="text-red-500 text-sm mt-1 absolute bottom-0 left-0">
+                    Name is required.
+                  </p>
+                )}
+              </motion.div>
+
+              {/* Email Input */}
+              <motion.div
+                className="relative pb-6"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <label htmlFor="email" className="sr-only">
+                  Your Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  placeholder="Your Email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full px-5 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                    formErrors.email
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                      : formData.email.trim() !== "" && !formErrors.email
+                      ? "border-green-500 focus:border-green-500 focus:ring-green-500"
+                      : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  }`}
+                  required
+                />
+                {formErrors.email && (
+                  <p className="text-red-500 text-sm mt-1 absolute bottom-0 left-0">
+                    Valid email is required.
+                  </p>
+                )}
+              </motion.div>
+
+              {/* Message Textarea */}
+              <motion.div
+                className="relative pb-6"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+              >
+                <label htmlFor="message" className="sr-only">
+                  Your Message
+                </label>
+                <textarea
+                  id="message"
+                  name="message"
+                  rows={5}
+                  placeholder="Your Message"
+                  value={formData.message}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full px-5 py-3 border rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                    formErrors.message
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                      : formData.message.trim() !== ""
+                      ? "border-green-500 focus:border-green-500 focus:ring-green-500"
+                      : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  }`}
+                  required
+                ></textarea>
+                {formErrors.message && (
+                  <p className="text-red-500 text-sm mt-1 absolute bottom-0 left-0">
+                    Message is required.
+                  </p>
+                )}
+              </motion.div>
+
+              {/* Submit Button */}
+              <motion.button
+                type="submit"
+                className="w-full px-8 py-3 text-lg font-medium text-white bg-[#3464b4] rounded-lg hover:bg-blue-800 flex items-center justify-center shadow-md transition-colors duration-300"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <svg
+                    className="animate-spin h-5 w-5 text-white mr-3"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                ) : (
+                  "Send Message"
+                )}
+              </motion.button>
+
+              {/* Submission Message */}
+              <AnimatePresence>
+                {isSubmitted && submitMessage && (
+                  <motion.p
+                    className={`text-center font-medium mt-4 ${
+                      submitMessage.includes("successfully")
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {submitMessage}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </motion.form>
+
+            {/* Right side: Contact Info */}
+            <div className="w-full lg:w-1/2 text-center lg:text-left">
+              <motion.h2
+                className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4"
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.6 }}
+              >
+                Have more questions?
+              </motion.h2>
+              <motion.p
+                className="text-lg sm:text-xl text-[#fe7239] mb-8"
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+              >
+                Reach out to us directly or through the contact information
+                below.
+              </motion.p>
+
+              <motion.div
+                className="space-y-4"
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+              >
+                <p className="text-xl text-[#454640] flex items-center justify-center lg:justify-start gap-2">
+                  <PhoneIcon className="w-6 h-6 text-[#fe7239]" /> +61 438 143
+                  059
+                </p>
+                <p className="text-xl text-[#454640] flex items-center justify-center lg:justify-start gap-2">
+                  <EnvelopeIcon className="w-6 h-6 text-[#fe7239]" />{" "}
+                  contact@theopenshift.com
+                </p>
+              </motion.div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-white text-white py-12">
+      <footer className="bg-[#1a4154] text-gray-600 py-12 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="text-xl font-bold mb-4">TheOpenShift</h3>
-              <p className="text-gray-400">Connecting aged care staff with opportunities.</p>
+              <h3 className="text-xl font-bold mb-4 text-white">
+                TheOpenShift
+              </h3>
+              <p className="text-white">
+                Thoughtful care for every life - powered by purpose and
+                intelligence
+              </p>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Quick Links</h4>
+              <h4 className="font-semibold mb-4 text-white">Quick Links</h4>
               <ul className="space-y-2">
-                <li><a href="#features" className="text-gray-400 hover:text-white">Features</a></li>
-                <li><a href="#how-it-works" className="text-gray-400 hover:text-white">How it Works</a></li>
-                <li><a href="#contact" className="text-gray-400 hover:text-white">Contact</a></li>
+                <li>
+                  <a
+                    href="#features"
+                    className="text-white hover:text-blue-200 transition-colors"
+                  >
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#how-it-works"
+                    className="text-white hover:text-blue-200 transition-colors"
+                  >
+                    How it Works
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#contact"
+                    className="text-white hover:text-blue-200 transition-colors"
+                  >
+                    Contact
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
+              <h4 className="font-semibold mb-4 text-white">Legal</h4>
               <ul className="space-y-2">
-                <li><a href="#" className="text-gray-400 hover:text-white">Privacy Policy</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white">Terms of Service</a></li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-white hover:text-blue-200 transition-colors"
+                  >
+                    Privacy Policy
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-white hover:text-blue-200 transition-colors"
+                  >
+                    Terms of Service
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Contact</h4>
+              <h4 className="font-semibold mb-4 text-white">Contact</h4>
               <ul className="space-y-2">
-                <li className="text-gray-400">Email: contact@theopenshift.com</li>
-                <li className="text-gray-400">Phone: (123) 456-7890</li>
+                <li className="text-white">Email: contact@theopenshift.com</li>
+                <li className="text-white">Phone: +61 438 143 059</li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; {new Date().getFullYear()} TheOpenShift. All rights reserved.</p>
+          <div className="border-t border-white mt-8 pt-8 text-center text-white">
+            <p>
+              &copy; {new Date().getFullYear()} TheOpenShift. All rights
+              reserved.
+            </p>
           </div>
         </div>
       </footer>
