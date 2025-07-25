@@ -302,7 +302,7 @@ export default function EditProfilePage() {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ availability: availabilityLower }),
+          body: JSON.stringify(availabilityLower),
         });
         if (!availRes.ok) {
           setErrorToast({
@@ -529,14 +529,9 @@ export default function EditProfilePage() {
 
   return (
     <div className="flex min-h-screen bg-[#f6f8fa] relative">
-      {/* Hamburger for mobile */}
-      <button
-        className="absolute top-4 left-4 z-30 md:hidden bg-white rounded-full p-2 shadow border border-gray-200"
-        onClick={() => setSidebarOpen(true)}
-        aria-label="Open menu"
-      >
-        <Bars3Icon className="w-7 h-7 text-[#3464b4]" />
-      </button>
+      {/* Quarter circle design elements */}
+      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[#fe7239] rounded-tl-full z-0 opacity-80 xl:w-[700px] xl:h-[700px]"></div>
+      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-[#fe7239] rounded-br-full z-0 opacity-80 xl:w-[700px] xl:h-[700px]"></div>
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 flex md:hidden">
@@ -565,7 +560,7 @@ export default function EditProfilePage() {
       )}
       {/* Desktop Sidebar */}
       <SidebarProfile user={sidebarUser} userType="staff" />
-      <main className="flex-1 flex flex-col items-center px-2 sm:px-8 py-8">
+      <main className="flex-1 flex flex-col items-center px-2 sm:px-8 py-8 z-10">
         <h1 className="text-4xl font-bold text-[#3464b4] mb-8">Edit Profile</h1>
 
         {/* Current Details Section - Wrapped in Disclosure */}
@@ -585,7 +580,7 @@ export default function EditProfilePage() {
                           initial="collapsed"
                           animate="open"
                           exit="collapsed"
-                          variants={panelVariants}
+                          //variants={panelVariants}
                           className="pt-4 overflow-hidden"
                       >
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -734,7 +729,7 @@ export default function EditProfilePage() {
                           initial="collapsed"
                           animate="open"
                           exit="collapsed"
-                          variants={panelVariants}
+                          //variants={panelVariants}
                           className="pt-4 overflow-hidden"
                       >
                           <div className="flex flex-col md:flex-row gap-6">
@@ -795,7 +790,7 @@ export default function EditProfilePage() {
                                 </div>
                               )}
                               {activeStep === 1 && (
-                                // Stripe Section (formerly Bank Details)
+                                // Stripe Section
                                 <div className="mb-8 p-8 bg-[#f8faff] rounded-xl border border-[#e3e8f0]">
                                   <h3 className="text-xl font-bold text-[#3464b4] mb-4 flex items-center gap-2"><CreditCardIcon className="w-6 h-6 text-[#3464b4]" /> Stripe</h3>
                                   {chargesEnabled ? (

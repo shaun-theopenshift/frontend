@@ -52,6 +52,7 @@ interface StaffProfile {
   interests: string[];
   preferences: string[];
   services: string[];
+  charges_enabled?: boolean;
 }
 
 const API_BASE_URL = "https://api.theopenshift.com";
@@ -150,6 +151,9 @@ export default function StaffPage() {
   const [completedStepIds, setCompletedStepIds] = useState<string[]>([]);
   const [isProfileComplete, setIsProfileComplete] = useState(false); 
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [stripeDashboardUrl, setStripeDashboardUrl] = useState<string | null>(null);
+  
+
 
   const steps = [
     {
@@ -199,84 +203,110 @@ export default function StaffPage() {
       }
 
       try {
-        const session = await fetch('/api/auth/session').then(res => res.json());
-        const accessToken = session?.accessToken;
-        if (!accessToken) {
-          if (isMounted) {
-            setError("Not authenticated. Please log in.");
-            setLoading(false);
-          }
-          return;
-        }
+  const session = await fetch('/api/auth/session').then(res => res.json());
+  const accessToken = session?.accessToken;
+  if (!accessToken) {
+    if (isMounted) {
+      setError("Not authenticated. Please log in.");
+      setLoading(false);
+    }
+    return;
+  }
 
-        const profileRes = await fetch(`${API_BASE_URL}/v1/users/me`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/json',
-          },
-        });
+  // Fetch profile
+  const profileRes = await fetch(`${API_BASE_URL}/v1/users/me`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Accept': 'application/json',
+    },
+  });
 
-        if (profileRes.ok) {
-          const userProfileData = await profileRes.json();
-          if (isMounted) {
-            setProfile(userProfileData);
-          }
-        } else {
-          if (isMounted) {
-            setError(prev => prev ? `${prev} Error fetching user profile.` : "Error fetching user profile.");
-          }
-        }
+  let userProfileData: any = null;
+  if (profileRes.ok) {
+    userProfileData = await profileRes.json();
+    if (isMounted) setProfile(userProfileData);
+  } else {
+    if (isMounted) setError(prev => prev ? `${prev} Error fetching user profile.` : "Error fetching user profile.");
+  }
 
-        const availRes = await fetch(`${API_BASE_URL}/v1/users/availability`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/json',
-          },
-        });
-        if (availRes.ok) {
-          const availData = await availRes.json();
-          if (availData && availData.availability) {
-            if (isMounted) {
-              setAvailability(availData.availability);
-            }
-          }
-        } else {
-          if (isMounted) setError(prev => prev ? `${prev} Error fetching availability.` : "Error fetching availability.");
-        }
+  // Fetch availability
+  const availRes = await fetch(`${API_BASE_URL}/v1/users/availability`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Accept': 'application/json',
+    },
+  });
+  let availData: any = null;
+  if (availRes.ok) {
+    availData = await availRes.json();
+    if (availData && availData.availability && isMounted) {
+      setAvailability(availData.availability);
+    }
+  } else {
+    if (isMounted) setError(prev => prev ? `${prev} Error fetching availability.` : "Error fetching availability.");
+  }
 
-        const roleRes = await fetch(`${API_BASE_URL}/v1/roles/me`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/json',
-          },
-        });
-        if (roleRes.ok) {
-          const roleData = await roleRes.json();
-          if (isMounted && roleData?.role) {
-            setRole(roleData.role);
-          }
-        } else {
-          if (isMounted) setError(prev => prev ? `${prev} Error fetching role.` : "Error fetching role.");
-        }
-        
-        // --- Placeholder for backend integration to determine completed steps ---
-        // In a real application, you would fetch the actual completion status for each step
-        // For demonstration, let's manually mark some steps as complete
-        if (isMounted) {
-          // Example: Mark 'availability' and 'email-verification' as complete
-          // setCompletedStepIds(['availability', 'email-verification']); 
-        }
-        // --- End Placeholder ---
+  // Fetch role
+  const roleRes = await fetch(`${API_BASE_URL}/v1/roles/me`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Accept': 'application/json',
+    },
+  });
+  if (roleRes.ok) {
+    const roleData = await roleRes.json();
+    if (isMounted && roleData?.role) {
+      setRole(roleData.role);
+    }
+  } else {
+    if (isMounted) setError(prev => prev ? `${prev} Error fetching role.` : "Error fetching role.");
+  }
 
-      } catch (e: any) {
-        if (isMounted) {
-          setError(`An unexpected error occurred: ${e.message || 'Unknown error'}`);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
+  // --- Completion logic ---
+  if (isMounted) {
+    const completed: string[] = [];
+
+    // 1. Availability: at least one day true
+    if (availData && availData.availability && Object.values(availData.availability).some(Boolean)) {
+      completed.push('availability');
+    }
+
+    // 2. Stripe Onboarding: charges_enabled true
+    if (userProfileData && userProfileData.charges_enabled) {
+  completed.push('stripe-onboarding');
+  // Fetch Stripe dashboard URL
+  const stripeRes = await fetch(`${API_BASE_URL}/v1/payments/dashboard`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Accept': 'application/json',
+    },
+  });
+  if (stripeRes.ok) {
+    const stripeData = await stripeRes.json();
+    setStripeDashboardUrl(stripeData.url);
+  }
+}
+
+    // 3. Email Verification: Auth0 user.email_verified true
+    if (user?.email_verified === true) {
+      console.log("Auth0 email_verified:", user?.email_verified);
+      console.log("Auth0 user object:", user);
+      completed.push('email-verification');
+    }
+
+    // 4. BGV: leave as is (manual or future logic)
+
+    setCompletedStepIds(completed);
+  }
+} catch (e: any) {
+  if (isMounted) {
+    setError(`An unexpected error occurred: ${e.message || 'Unknown error'}`);
+  }
+} finally {
+  if (isMounted) {
+    setLoading(false);
+  }
+}
     };
 
     fetchData();
@@ -292,15 +322,6 @@ export default function StaffPage() {
       setIsProfileComplete(false); // If a step becomes incomplete, revert status
     }
   }, [completedStepIds, isProfileComplete, steps]);
-
-  // Function to toggle completion status of a step (for demonstration)
-  const toggleStepCompletion = (stepId: string) => {
-    setCompletedStepIds(prev =>
-      prev.includes(stepId)
-        ? prev.filter(id => id !== stepId)
-        : [...prev, stepId]
-    );
-  };
 
   // Sanitize user for SidebarProfile
   const sidebarUser = user
@@ -416,13 +437,6 @@ export default function StaffPage() {
                             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M1 5h12m0 0L9 1m4 4L9 9"/>
                           </svg>
                         </Link>
-                         {/* Button for demonstration purposes to toggle completion */}
-                         <button
-                          onClick={() => toggleStepCompletion(step.id)}
-                          className="ml-4 px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200"
-                        >
-                          {isStepCompleted ? 'Mark Incomplete' : 'Mark Complete'}
-                        </button>
                       </div>
                     </li>
                   );
@@ -624,7 +638,7 @@ export default function StaffPage() {
               animate="visible"
               whileHover="hover"
             >
-              <h3 className="text-2xl font-bold text-[#3464b4] mb-3 border-b pb-2 border-gray-100">Availability & Rates</h3>
+              <h3 className="text-2xl font-bold text-[#3464b4] mb-3 border-b pb-2 border-gray-100">Availability & Stripe</h3>
               <div className="mb-6">
                 <h4 className="text-lg font-semibold text-gray-800 mb-2">Preferred Hours</h4>
                 <div className="text-gray-700 text-sm mb-3">Support sessions don't need to fill each time slot completely.</div>
@@ -654,6 +668,32 @@ export default function StaffPage() {
                   );
                 })()}
               </div>
+              <div className="mb-6">
+    <h4 className="text-lg font-semibold text-gray-800 mb-2">Stripe Onboarding</h4>
+    {profile?.charges_enabled ? (
+      <div className="flex flex-col gap-2">
+        <span className="text-green-600 font-semibold">Stripe onboarding completed.</span>
+        {stripeDashboardUrl && (
+          <button
+            className="px-4 py-2 rounded-full bg-[#3464b4] text-white font-semibold hover:bg-[#2a559c] transition-colors"
+            onClick={() => window.open(stripeDashboardUrl, "_blank")}
+          >
+            Go to Stripe Dashboard
+          </button>
+        )}
+      </div>
+    ) : (
+      <div className="flex flex-col gap-2">
+        <span className="text-red-600 font-semibold">Complete Stripe onboarding to receive payments.</span>
+        <button
+          className="px-4 py-2 rounded-full bg-[#3464b4] text-white font-semibold hover:bg-[#2a559c] transition-colors"
+          onClick={() => router.push('/profile/staff/edit')}
+        >
+          Complete Stripe Onboarding
+        </button>
+      </div>
+    )}
+  </div>
 
             </motion.div>
 

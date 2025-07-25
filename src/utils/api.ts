@@ -1,3 +1,4 @@
+// utils/api.ts
 export const API_BASE_URL = "https://api.theopenshift.com";
 
 export interface StaffProfile {
@@ -14,13 +15,25 @@ export interface StaffProfile {
     tfn: string;
 }
 
+export async function getAccessToken(): Promise<string> {
+    const sessionRes = await fetch("/api/auth/session");
+    if (!sessionRes.ok) throw new Error("Failed to fetch session.");
+    const session = await sessionRes.json();
+    if (!session?.accessToken) throw new Error("No access token available");
+    return session.accessToken;
+}
+
 export async function apiRequest<T>(
     endpoint: string,
-    method: "GET" | "POST" | "PATCH" = "POST",
+    method: "GET" | "POST" | "PATCH" = "GET", // Default to GET for safety
     body?: any
 ): Promise<T> {
     try {
-        const session = await fetch("/api/auth/session").then((res) => res.json());
+        const sessionRes = await fetch("/api/auth/session"); // Fetch session directly
+        if (!sessionRes.ok) {
+            throw new Error("Failed to fetch session.");
+        }
+        const session = await sessionRes.json();
         console.log("Session:", session);
         if (!session?.accessToken) throw new Error("No access token available");
 
@@ -68,7 +81,7 @@ export const api = {
     getMyBookings: () => apiRequest<any>('/v1/bookings/my_bookings', 'GET'),
 
     // Get a specific booking by ID
-    getBookingById: (booking_id: string) => apiRequest<any>(`/v1/bookings/${booking_id}`, 'GET'), // Added this function
+    getBookingById: (booking_id: string) => apiRequest<any>(`/v1/bookings/${booking_id}`, 'GET'),
 
     // Cancel a booking (job listing)
     cancelBooking: (booking_id: number) => apiRequest<any>(`/v1/bookings/cancel?booking_id=${booking_id}`, 'PATCH'),
@@ -108,9 +121,7 @@ export const api = {
     // Check in/out for a booking (timesheet)
     checkInBooking: (booking_id: number, checkOut: boolean = false) =>
         apiRequest<any>(
-            `/v1/bookings/timesheet/check_in/${booking_id}${checkOut ? '?check_out=true' : ''}`,
-            'POST'
-        ),
+            `/v1/bookings/timesheet/check_in/${booking_id}${checkOut ? '?check_out=true' : ''}`,'POST'),
 
     // Send timesheet
     sendTimesheet: (booking_id: number, data: any) =>
@@ -119,8 +130,20 @@ export const api = {
     // Approve or reject a timesheet
     approveTimesheet: (booking_id: number, approve: boolean, amount?: string) =>
         apiRequest<any>(
-            `/v1/bookings/timesheet/request_response/${booking_id}?approve=${approve}`,
-            'POST',
-            amount !== undefined ? { amount } : undefined
-        ),
+            `/v1/bookings/timesheet/request_response/${booking_id}?approve=${approve}`,'POST', amount !== undefined ? { amount } : undefined),
+
+    /**
+     * Creates a booking payment session and returns the payment URL.
+     * @param bookingId The ID of the booking to create a payment session for.
+     * @returns A promise that resolves to an object containing the payment URL.
+     */
+    createBookingPaymentSession: async (bookingId: number) => {
+        return apiRequest<any>(`/v1/payments/booking_payment?booking_id=${bookingId}`, 'POST', {});
+    },
+
+    /**
+     * Fetches the Stripe dashboard URL for the connected account.
+     * @returns A promise that resolves to an object containing the URL.
+     */
+    getStripeDashboardLink: () => apiRequest<any>('/v1/payments/dashboard', 'GET'),
 };

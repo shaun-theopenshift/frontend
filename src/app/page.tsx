@@ -30,7 +30,6 @@ import {
   AnimatePresence,
 } from "framer-motion";
 import { Tab, Disclosure } from "@headlessui/react"; // Added Disclosure
-import CurvedLoop from "./components/CurvedText/CurvedText";
 import RotatingText from "./components/RotatingText/RotatingText";
 
 // Define interfaces for better type safety
@@ -66,6 +65,22 @@ export default function Home() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  //twak.to
+  useEffect(() => {
+  const script = document.createElement("script");
+  script.src = "https://embed.tawk.to/6876316f7f202b19181eb4e7/1j06r26po";
+  script.async = true;
+  script.charset = "UTF-8";
+  script.setAttribute("crossorigin", "*");
+  document.body.appendChild(script);
+
+  return () => {
+    // Optional: Cleanup if component unmounts
+    document.body.removeChild(script);
+  };
+}, []);
+
 
   // Data for the feature cards
   const featureCards = [
@@ -262,6 +277,8 @@ export default function Home() {
     }
   };
 
+  
+
   return (
     <main className="flex min-h-screen flex-col font-ubuntu">
       <style jsx global>{`
@@ -271,7 +288,6 @@ export default function Home() {
         }
       `}</style>
       <Navigation />
-
       {/* Hero Section */}
       <section className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#fff5e2] to-white relative overflow-hidden">
         {/* New curved element behind the image */}

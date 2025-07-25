@@ -23,8 +23,12 @@ export default function Navigation() {
   const { user, isLoading } = useUser();
   const pathname = usePathname();
 
-  // Handle scroll for shrinking effect
+  // State to track if the component has mounted on the client side
+  const [isClient, setIsClient] = useState(false); // Add this line
+
   useEffect(() => {
+    // Set isClient to true once the component mounts on the client
+    setIsClient(true); // Add this line
     const handleScroll = () => {
       const isScrolled = window.scrollY > 50; // Shrink after 50px scroll
       if (isScrolled !== scrolled) {
@@ -60,7 +64,8 @@ export default function Navigation() {
     }
     // For hash links, check if we are on the home page and the hash matches
     if (href.startsWith('#')) {
-      return pathname === '/' && window.location.hash === href;
+      // Conditionally access window.location.hash only on the client side
+      return pathname === '/' && isClient && window.location.hash === href; // Modified line
     }
     // For other routes, direct match
     return pathname === href;

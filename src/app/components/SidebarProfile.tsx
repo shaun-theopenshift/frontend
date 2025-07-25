@@ -27,14 +27,14 @@ const organizationNav: NavItem[] = [
   { name: 'Dashboard', href: '/profile', icon: HomeIcon },
   { name: 'Search Worker', href: '/profile/organization/search-worker', icon: MagnifyingGlassIcon },
   { name: 'Manage Jobs', href: '/profile/organization/manage-job', icon: BriefcaseIcon },
-  { name: 'Compliance', href: '/compliance', icon: ClipboardDocumentCheckIcon },
+  { name: 'Inbox', href: '/profile/organization/inbox', icon: InboxIcon },
   { name: 'Account', href: '/account', icon: Cog6ToothIcon },
 ];
 
 export const staffNav: NavItem[] = [
   { name: 'Profile', href: '/profile', icon: UserIcon }, // Changed icon to UserIcon for 'Profile'
   { name: 'Jobs', href: '/profile/staff/jobs', icon: BriefcaseIcon },
-  { name: 'Inbox', href: '/inbox', icon: InboxIcon },
+  { name: 'Inbox', href: '/profile/staff/inbox', icon: InboxIcon },
   { name: 'Compliance', href: '/compliance', icon: ClipboardDocumentCheckIcon },
   { name: 'Account', href: '/profile/staff/account', icon: Cog6ToothIcon },
 ];

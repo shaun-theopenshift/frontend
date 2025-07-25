@@ -135,7 +135,7 @@ export default function RoleSelection() {
                 Back
               </button>
               <button
-                className="w-full flex items-center justify-center px-6 py-5 text-lg font-semibold text-brand-dark border-2 border-brand-dark rounded-xl bg-white hover:bg-gray-100 transition duration-200"
+                className="disabled w-full flex items-center justify-center px-6 py-5 text-lg font-semibold text-brand-dark border-2 border-brand-dark rounded-xl bg-white hover:bg-gray-100 transition duration-200"
                 onClick={() => {}}
               >
                 For Myself / For someone I know
