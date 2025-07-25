@@ -10,6 +10,7 @@ export default handleAuth({
         },
       });
     } catch (error) {
+      console.error("Auth0 login error:", error);
       res.status(500).end('Error logging in');
     }
   },
