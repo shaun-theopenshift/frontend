@@ -35,8 +35,8 @@ async function apiRequest<T>(endpoint: string, method: "GET" | "POST" | "PATCH" 
       const errorText = await response.text();
       throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
-    const text = await response.text();
-    return text ? JSON.parse(text) : {};
+    const data = await response.json();
+return data;
   } catch (error) {
     throw error;
   }

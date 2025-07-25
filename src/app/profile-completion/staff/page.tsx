@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, Fragment } from "react";
+import { useState, useRef, useEffect, Fragment, Suspense } from "react";
 import {
   UserGroupIcon,
   BuildingOfficeIcon,
@@ -110,7 +110,7 @@ function calculateExperience(
   return result || "Less than a month";
 }
 
-export default function ProfileCompletion() {
+function ProfileCompletionContent() {
   const { user, error, isLoading: authLoading } = useUser();
   const searchParams = useSearchParams();
 
@@ -1601,5 +1601,13 @@ export default function ProfileCompletion() {
         duration={6000}
       />
     </div>
+  );
+}
+
+export default function ProfileCompletion() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ProfileCompletionContent />
+    </Suspense>
   );
 }
