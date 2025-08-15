@@ -73,26 +73,26 @@ const PREFERENCES = [
   { label: "Female only", value: "female_only", icon: UserIcon, iconClass: "text-pink-400" },
 ];
 const SERVICES = [
+  // {
+  //   label: "Everyday Activities Support",
+  //   value: "everyday",
+  //   description: "Assistance with daily living tasks such as meal preparation, cleaning, shopping, and transportation. Helps clients maintain independence in their own homes."
+  // },
   {
-    label: "Everyday Activities Support",
-    value: "everyday",
-    description: "Assistance with daily living tasks such as meal preparation, cleaning, shopping, and transportation. Helps clients maintain independence in their own homes."
-  },
-  {
-    label: "Self-Care Assistance",
+    label: "Personal Care Worker",
     value: "self_care",
     description: "Support with personal hygiene, bathing, dressing, grooming, toileting, and mobility. Ensures clients' dignity and comfort in daily routines."
   },
   {
-    label: "Skilled Nursing Care",
+    label: "Nursing",
     value: "nursing",
     description: "Medical care provided by registered nurses, including medication management, wound care, injections, monitoring vital signs, and post-hospital care."
   },
-  {
-    label: "Allied Health Services",
-    value: "healthcare",
-    description: "Access to allied health professionals such as physiotherapists, occupational therapists, speech pathologists, and dietitians for rehabilitation and wellness."
-  },
+  // {
+  //   label: "Allied Health Services",
+  //   value: "healthcare",
+  //   description: "Access to allied health professionals such as physiotherapists, occupational therapists, speech pathologists, and dietitians for rehabilitation and wellness."
+  // },
 ];
 
 export default function EditProfilePage() {
@@ -528,7 +528,7 @@ export default function EditProfilePage() {
 
 
   return (
-    <div className="flex min-h-screen bg-[#f6f8fa] relative">
+    <div className="flex min-h-screen bg-[#f6f8fa] relative overflow-x-hidden">
       {/* Quarter circle design elements */}
       <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[#fe7239] rounded-tl-full z-0 opacity-80 xl:w-[700px] xl:h-[700px]"></div>
       <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-[#fe7239] rounded-br-full z-0 opacity-80 xl:w-[700px] xl:h-[700px]"></div>
@@ -560,7 +560,7 @@ export default function EditProfilePage() {
       )}
       {/* Desktop Sidebar */}
       <SidebarProfile user={sidebarUser} userType="staff" />
-      <main className="flex-1 flex flex-col items-center px-2 sm:px-8 py-8 z-10">
+      <main className="flex-1 flex flex-col items-center px-2 sm:px-8 py-8 z-10 pb-24 md:pb-0">
         <h1 className="text-4xl font-bold text-[#3464b4] mb-8">Edit Profile</h1>
 
         {/* Current Details Section - Wrapped in Disclosure */}
@@ -586,16 +586,16 @@ export default function EditProfilePage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                               <label className="block font-semibold text-gray-700 mb-1">First Name</label>
-                              <input className="w-full border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.fname || ''} onChange={e => setForm((f: any) => ({ ...f, fname: e.target.value }))} />
+                              <input className="w-full border border-gray-300 rounded-lg p-2 text-black focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.fname || ''} onChange={e => setForm((f: any) => ({ ...f, fname: e.target.value }))} />
                             </div>
                             <div>
                               <label className="block font-semibold text-gray-700 mb-1">Last Name</label>
-                              <input className="w-full border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.lname || ''} onChange={e => setForm((f: any) => ({ ...f, lname: e.target.value }))} />
+                              <input className="w-full border border-gray-300 rounded-lg p-2 text-black focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.lname || ''} onChange={e => setForm((f: any) => ({ ...f, lname: e.target.value }))} />
                             </div>
                             <div>
                               <label className="block font-semibold text-gray-700 mb-2">State</label>
                               <select
-                                className="w-full border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition"
+                                className="w-full border border-gray-300 rounded-lg p-2 text-black focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition"
                                 value={selectedState}
                                 onChange={e => {
                                   setSelectedState(e.target.value);
@@ -629,11 +629,11 @@ export default function EditProfilePage() {
                             )}
                             <div>
                               <label className="block font-semibold text-gray-700 mb-1">Date of Birth</label>
-                              <input type="date" className="w-full border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.dob || ''} onChange={e => setForm((f: any) => ({ ...f, dob: e.target.value }))} />
+                              <input type="date" className="w-full border border-gray-300 rounded-lg p-2 text-black focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.dob || ''} onChange={e => setForm((f: any) => ({ ...f, dob: e.target.value }))} />
                             </div>
                             <div>
                               <label className="block font-semibold text-gray-700 mb-1">Gender</label>
-                              <select className="w-full border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.gender || ''} onChange={e => setForm((f: any) => ({ ...f, gender: e.target.value }))}>
+                              <select className="w-full border border-gray-300 rounded-lg p-2 text-black focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.gender || ''} onChange={e => setForm((f: any) => ({ ...f, gender: e.target.value }))}>
                                 <option value="">Select</option>
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
@@ -642,23 +642,23 @@ export default function EditProfilePage() {
                             </div>
                             <div>
                               <label className="block font-semibold text-gray-700 mb-1">Phone</label>
-                              <input className="w-full border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.phone || ''} onChange={e => setForm((f: any) => ({ ...f, phone: e.target.value }))} />
+                              <input className="w-full border border-gray-300 rounded-lg p-2 text-black focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.phone || ''} onChange={e => setForm((f: any) => ({ ...f, phone: e.target.value }))} />
                             </div>
                             <div className="md:col-span-2">
                               <label className="block font-semibold text-gray-700 mb-1">Bio</label>
-                              <textarea className="w-full border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" rows={3} value={form.bio || ''} onChange={e => setForm((f: any) => ({ ...f, bio: e.target.value }))} />
+                              <textarea className="w-full border border-gray-300 rounded-lg p-2 text-black focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" rows={3} value={form.bio || ''} onChange={e => setForm((f: any) => ({ ...f, bio: e.target.value }))} />
                             </div>
                             <div>
                               <label className="block font-semibold text-gray-700 mb-1">Emergency Contact Name</label>
-                              <input className="w-full border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.emergency_contact || ''} onChange={e => setForm((f: any) => ({ ...f, emergency_contact: e.target.value }))} />
+                              <input className="w-full border border-gray-300 rounded-lg p-2 text-black focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.emergency_contact || ''} onChange={e => setForm((f: any) => ({ ...f, emergency_contact: e.target.value }))} />
                             </div>
                             <div>
                               <label className="block font-semibold text-gray-700 mb-1">Emergency Contact Phone</label>
-                              <input className="w-full border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.emergency_contact_phone || ''} onChange={e => setForm((f: any) => ({ ...f, emergency_contact_phone: e.target.value }))} />
+                              <input className="w-full border border-gray-300 rounded-lg p-2 text-black focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.emergency_contact_phone || ''} onChange={e => setForm((f: any) => ({ ...f, emergency_contact_phone: e.target.value }))} />
                             </div>
                             <div>
                               <label className="block font-semibold text-gray-700 mb-1">TFN</label>
-                              <input className="w-full border border-gray-300 rounded-lg p-2 text-gray-800 focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.tfn || ''} onChange={e => setForm((f: any) => ({ ...f, tfn: e.target.value }))} />
+                              <input className="w-full border border-gray-300 rounded-lg p-2 text-black focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition" value={form.tfn || ''} onChange={e => setForm((f: any) => ({ ...f, tfn: e.target.value }))} />
                             </div>
                             <div className="md:col-span-2">
                               <label className="block font-semibold text-gray-700 mb-1">Skills</label>
@@ -677,7 +677,7 @@ export default function EditProfilePage() {
                                 value={skillsInput}
                                 onChange={e => setSkillsInput(e.target.value)}
                                 onKeyDown={handleAddSkill}
-                                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#3464b4] focus:border-transparent transition"
+                                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#3464b4] text-black focus:border-transparent transition"
                                 placeholder="Type a skill and press Enter to add"
                               />
                               <p className="text-sm text-gray-600 mt-1">Press Enter to add each skill</p>
@@ -1011,8 +1011,8 @@ export default function EditProfilePage() {
                                       })}
                                     </div>
                                     <div className="bg-blue-100 border-t border-b border-blue-500 text-blue-700 px-4 py-3 w-full rounded-lg" role="alert">
-                                      <p className="font-bold">Informational message</p>
-                                      <p className="text-sm">Please select at least one service you provide.</p>
+                                      <p className="font-bold">Note</p>
+                                      <p className="text-sm">Please select at least one service you provide. The checks required for this Service Type can be found in the Compliance Tab.</p>
                                     </div>
                                   </div>
                                   <div className="flex-1 min-w-[250px]">

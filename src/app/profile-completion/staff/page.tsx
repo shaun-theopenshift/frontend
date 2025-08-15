@@ -134,6 +134,16 @@ function ProfileCompletionContent() {
     }
   }, [selectedImage]);
 
+  //New Profile Photo Upload Logic
+  const [imageVersion, setImageVersion] = useState(Date.now());
+  const getProfileImageUrl = () => {
+    if (user?.sub) {
+      const userId = user.sub.replace(/^auth0\|/, "");
+      return `https://img.theopenshift.com/profile/${userId}.webp?v=${imageVersion}`;
+    }
+    return "/default-avatar.png";
+  };
+
   // @ts-expect-error Next.js useSearchParams never returns null
   const isEditMode = searchParams.get("edit") === "1";
   const [loading, setLoading] = useState(isEditMode);
@@ -534,11 +544,11 @@ function ProfileCompletionContent() {
               >
                 {profilePic ? (
                   <Image
-                    src={profilePic}
+                    src={getProfileImageUrl()}
                     alt="Profile"
-                    width={40}
-                    height={40}
-                    className="object-cover w-10 h-10"
+                    width={96}
+                    height={96}
+                    className="object-cover w-24 h-24"
                   />
                 ) : (
                   <svg
@@ -665,11 +675,19 @@ function ProfileCompletionContent() {
                           croppedBlob,
                           selectedImage.name
                         );
+
+                        // Get the access token
+                        const token = await getAccessToken();
+
                         const res = await fetch(
                           "https://img.theopenshift.com/v1/upload/",
                           {
                             method: "POST",
                             body: formData,
+                            headers: {
+                              Authorization: `Bearer ${token}`,
+                              Accept: "application/json",
+                            },
                           }
                         );
                         const data = await res.json();
@@ -682,6 +700,7 @@ function ProfileCompletionContent() {
                         setProfilePic(data.url || data);
                         setShowCropper(false);
                         setSelectedImage(null);
+                        setImageVersion(Date.now());
                         setSubmissionStatus({
                           type: "success",
                           message: "Photo uploaded successfully!",
@@ -690,7 +709,7 @@ function ProfileCompletionContent() {
                           () =>
                             setSubmissionStatus({ type: null, message: "" }),
                           3000
-                        ); // Clear success message
+                        );
                       } catch (err: any) {
                         setErrorToast({
                           message:
@@ -703,7 +722,7 @@ function ProfileCompletionContent() {
                           () =>
                             setSubmissionStatus({ type: null, message: "" }),
                           3000
-                        ); // Clear error message
+                        );
                       }
                     }}
                   >
@@ -857,28 +876,22 @@ function ProfileCompletionContent() {
                 <div className="flex flex-col sm:flex-row items-center gap-6">
                   <div className="relative w-24 h-24">
                     <div className="w-24 h-24 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-200">
-                      {profilePic ? (
+                      {selectedImageUrl ? (
                         <Image
-                          src={profilePic}
-                          alt="Profile"
+                          src={selectedImageUrl}
+                          alt="Profile preview"
                           width={96}
                           height={96}
                           className="object-cover w-24 h-24"
                         />
                       ) : (
-                        <svg
-                          className="w-16 h-16 text-gray-300"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                        </svg>
+                        <Image
+                          src={getProfileImageUrl()}
+                          alt="Profile"
+                          width={96}
+                          height={96}
+                          className="object-cover w-24 h-24"
+                        />
                       )}
                     </div>
                     <input
@@ -1509,23 +1522,6 @@ function ProfileCompletionContent() {
                     Please review all your information before submitting. You
                     can go back to previous tabs to make changes.
                   </p>
-                  <button
-                    onClick={handleFinish}
-                    disabled={!allFilled || submissionStatus.type === "success"}
-                    className={`px-6 py-2 text-sm font-medium rounded-md ${
-                      allFilled && submissionStatus.type !== "success"
-                        ? "bg-[#2954bd] text-white hover:bg-[#2954bd]/90"
-                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    }`}
-                  >
-                    {submissionStatus.type === "success"
-                      ? "Profile Created!"
-                      : submissionStatus.type === "error"
-                      ? "Try Again"
-                      : submissionStatus.message === "Creating your profile..."
-                      ? "Creating Profile..."
-                      : "Submit Profile"}
-                  </button>
                 </div>
               </div>
             )}

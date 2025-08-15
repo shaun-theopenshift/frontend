@@ -14,7 +14,8 @@ import {
   ChevronRightIcon,
   InformationCircleIcon,
   Bars3Icon, // For hamburger menu
-  XMarkIcon, // For close icon
+  XMarkIcon,
+  ExclamationTriangleIcon, // For close icon
 } from "@heroicons/react/24/outline";
 import { api } from "@/utils/api";
 import SidebarProfile from "@/app/components/SidebarProfile";
@@ -72,6 +73,8 @@ const timeAgo = (dateString: string): string => {
   if (interval > 1) return Math.floor(interval) + " minutes ago";
   return "just now";
 };
+
+const API_BASE_URL = "https://api.theopenshift.com";
 
 // --- UI COMPONENTS ---
 
@@ -154,8 +157,10 @@ const JobCard = ({
   requestStatus,
   requestError,
   myRequests,
+  handleSendRequest,
 }: {
   job: Job;
+  handleSendRequest: (jobId: string, rate: number, comment: string) => void;
   index: number;
   isExpanded: boolean;
   onToggleExpand: (jobId: string) => void;
@@ -172,8 +177,6 @@ const JobCard = ({
     (request) => request.booking_id === job.id
   );
 
-  // Determine if the user has an 'active' (pending or approved) request, which prevents re-applying
-  // Now also excludes 'sent_for_approval' from allowing re-application
   const hasActiveRequest =
     existingRequest &&
     (existingRequest.status === "pending" ||
@@ -314,6 +317,11 @@ const JobCard = ({
                       placeholder="e.g. 30"
                       required
                     />
+                    {rateInput && Number(rateInput) < 30 && (
+                      <p className="text-xs text-red-500 mt-1">
+                        Rate should be at least $30 as per Australian standard.
+                      </p>
+                    )}
                   </div>
                   <div className="flex-1 w-full">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -331,7 +339,10 @@ const JobCard = ({
                     type="submit"
                     className="w-full sm:w-auto px-6 py-2 rounded-lg bg-[#3464b4] text-white font-semibold hover:bg-[#2a508f] transition disabled:opacity-50 flex-shrink-0"
                     disabled={
-                      requestStatus === "loading" || requestStatus === "success"
+                      requestStatus === "loading" ||
+                      requestStatus === "success" ||
+                      !rateInput ||
+                      Number(rateInput) < 30
                     }
                   >
                     {requestStatus === "loading"
@@ -424,6 +435,15 @@ export default function RedesignedJobsPage() {
   const [myRequests, setMyRequests] = useState<JobRequest[]>([]);
   const [myRequestsLoading, setMyRequestsLoading] = useState(false);
   const [myRequestsError, setErrorMyRequests] = useState(""); // Renamed to avoid conflict
+  const [userServices, setUserServices] = useState<string[]>([]);
+
+  //Check for the service type
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [pendingRequest, setPendingRequest] = useState<{
+    jobId: string;
+    rate: number;
+    comment: string;
+  } | null>(null);
 
   const [requestStatus, setRequestStatus] = useState<
     "idle" | "loading" | "success" | "error"
@@ -441,6 +461,35 @@ export default function RedesignedJobsPage() {
   const [jobIdToStart, setJobIdToStart] = useState<string | null>(null);
   //
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State for mobile sidebar
+
+  //Fetch Services from USer Profile
+  useEffect(() => {
+    async function fetchUserServices() {
+      try {
+        // Fetch session to get accessToken
+        const sessionRes = await fetch("/api/auth/session");
+        const session = await sessionRes.json();
+        const accessToken = session?.accessToken; // Adjust if your token is nested
+
+        if (!accessToken) {
+          setUserServices([]);
+          return;
+        }
+
+        const profileRes = await fetch(`${API_BASE_URL}/v1/users/me`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        });
+        const profile = await profileRes.json();
+        setUserServices(profile.services || []);
+      } catch (err) {
+        setUserServices([]); // fallback
+      }
+    }
+    fetchUserServices();
+  }, []);
 
   // Fetch active jobs
   useEffect(() => {
@@ -617,7 +666,24 @@ export default function RedesignedJobsPage() {
                       index={index}
                       isExpanded={expandedJobId === job.id}
                       onToggleExpand={handleToggleExpand}
-                      onApply={handleSendRequest}
+                      handleSendRequest={handleSendRequest}
+                      onApply={(jobId, rate, comment) => {
+                        const jobObj = jobs.find((j) => j.id === jobId);
+                        console.log("Job service:", jobObj?.service);
+                        console.log("User services:", userServices);
+
+                        if (!jobObj || !jobObj.service) {
+                          console.warn("No job found for jobId:", jobId);
+                          return;
+                        }
+
+                        if (!userServices.includes(jobObj.service)) {
+                          setPendingRequest({ jobId, rate, comment });
+                          setShowWarningModal(true);
+                        } else {
+                          handleSendRequest(jobId, rate, comment);
+                        }
+                      }}
                       requestStatus={
                         activeRequestJobId === job.id ? requestStatus : "idle"
                       }
@@ -802,6 +868,53 @@ export default function RedesignedJobsPage() {
           font-family: "Ubuntu", sans-serif;
         }
       `}</style>
+      <Dialog
+        open={showWarningModal}
+        onClose={() => setShowWarningModal(false)}
+        className="fixed z-50 inset-0 overflow-y-auto"
+      >
+        <div className="flex items-center justify-center min-h-screen px-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 z-50 relative">
+            <div className="flex items-center mb-2">
+              <ExclamationTriangleIcon className="w-7 h-7 text-yellow-500 mr-2" />
+              <Dialog.Title className="text-xl font-bold text-[#3464b4]">
+                Service Type Mismatch
+              </Dialog.Title>
+            </div>
+            <Dialog.Description className="mb-4 text-gray-700">
+              You are applying for a job that is not your service type. You
+              might be rejected.
+            </Dialog.Description>
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                className="px-4 py-2 rounded bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300"
+                onClick={() => {
+                  setShowWarningModal(false);
+                  setPendingRequest(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded bg-[#3464b4] text-white font-semibold hover:bg-[#2a508f]"
+                onClick={() => {
+                  if (pendingRequest) {
+                    handleSendRequest(
+                      pendingRequest.jobId,
+                      pendingRequest.rate,
+                      pendingRequest.comment
+                    );
+                  }
+                  setShowWarningModal(false);
+                  setPendingRequest(null);
+                }}
+              >
+                Continue Anyways
+              </button>
+            </div>
+          </div>
+        </div>
+      </Dialog>
       <div className="min-h-screen bg-gray-50 text-gray-800 flex">
         {/* Mobile Sidebar (off-canvas) */}
         <Dialog
@@ -845,20 +958,18 @@ export default function RedesignedJobsPage() {
         </Dialog>
 
         {/* Desktop Sidebar */}
-        <div className="w-64 bg-white shadow-lg hidden md:block">
-          <SidebarProfile userType="staff" />
-        </div>
 
         <main className="flex-1">
-          <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 pb-24 md:pb-10">
             <header className="flex justify-between items-center mb-6">
               <div className="text-left">
                 <h1 className="text-4xl lg:text-5xl font-bold text-gray-900">
                   Jobs
                 </h1>
               </div>
+              <SidebarProfile userType="staff" />
               {/* Mobile menu button */}
-              <div className="md:hidden">
+              {/* <div className="md:hidden">
                 <button
                   type="button"
                   className="-ml-0.5 -mt-0.5 inline-flex h-12 w-12 items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#3464b4]"
@@ -867,10 +978,10 @@ export default function RedesignedJobsPage() {
                   <span className="sr-only">Open sidebar</span>
                   <Bars3Icon className="h-6 w-6" aria-hidden="true" />
                 </button>
-              </div>
+              </div> */}
             </header>
 
-            <div className="border-b border-gray-200 mb-8">
+            <div className="border-b border-gray-200 mb-8 ">
               <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                 <button
                   onClick={() => setActiveTab("active")}

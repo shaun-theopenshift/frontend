@@ -28,8 +28,8 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-} from 'recharts';
-import { motion } from 'framer-motion';
+} from "recharts";
+import { motion } from "framer-motion";
 
 interface OrganizationProfile {
   name: string;
@@ -46,20 +46,20 @@ interface OrganizationProfile {
 
 // Mock Data for Graphs (replace with actual API data if available)
 const mockShiftsData = [
-  { name: 'Jan', shifts: 10 },
-  { name: 'Feb', shifts: 15 },
-  { name: 'Mar', shifts: 12 },
-  { name: 'Apr', shifts: 18 },
-  { name: 'May', shifts: 20 },
-  { name: 'Jun', shifts: 25 },
+  { name: "Jan", shifts: 10 },
+  { name: "Feb", shifts: 15 },
+  { name: "Mar", shifts: 12 },
+  { name: "Apr", shifts: 18 },
+  { name: "May", shifts: 20 },
+  { name: "Jun", shifts: 25 },
 ];
 
 const mockInteractionsData = [
-  { worker: 'Alice', interactions: 50 },
-  { worker: 'Bob', interactions: 30 },
-  { worker: 'Charlie', interactions: 70 },
-  { worker: 'Diana', interactions: 45 },
-  { worker: 'Eve', interactions: 60 },
+  { worker: "Alice", interactions: 50 },
+  { worker: "Bob", interactions: 30 },
+  { worker: "Charlie", interactions: 70 },
+  { worker: "Diana", interactions: 45 },
+  { worker: "Eve", interactions: 60 },
 ];
 
 export default function OrganizationProfile() {
@@ -110,30 +110,39 @@ export default function OrganizationProfile() {
       setAbnLookupLoading(true);
       setAbnError(null);
 
-      const ABN_LOOKUP_GUID = process.env.NEXT_PUBLIC_ABN_LOOKUP_GUID || 'YOUR_ABN_LOOKUP_GUID_HERE';
+      const ABN_LOOKUP_GUID =
+        process.env.NEXT_PUBLIC_ABN_LOOKUP_GUID || "YOUR_ABN_LOOKUP_GUID_HERE";
 
-      if (!ABN_LOOKUP_GUID || ABN_LOOKUP_GUID === 'YOUR_ABN_LOOKUP_GUID_HERE') {
-        console.warn("ABN Lookup GUID is not configured. ABN status will not be fetched.");
+      if (!ABN_LOOKUP_GUID || ABN_LOOKUP_GUID === "YOUR_ABN_LOOKUP_GUID_HERE") {
+        console.warn(
+          "ABN Lookup GUID is not configured. ABN status will not be fetched."
+        );
         setAbnStatus(null);
         setAbnLookupLoading(false);
         return;
       }
 
       try {
-        const response = await fetch(`https://abr.business.gov.au/json/AbnDetails.aspx?callback=callback&name=${encodeURIComponent(orgName)}&abn=${encodeURIComponent(abn)}&guid=${ABN_LOOKUP_GUID}`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json'
+        const response = await fetch(
+          `https://abr.business.gov.au/json/AbnDetails.aspx?callback=callback&name=${encodeURIComponent(
+            orgName
+          )}&abn=${encodeURIComponent(abn)}&guid=${ABN_LOOKUP_GUID}`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
           }
-        });
+        );
 
         const text = await response.text();
-        const jsonStr = text.replace(/^callback\(|\)$/g, '');
+        const jsonStr = text.replace(/^callback\(|\)$/g, "");
         const data = JSON.parse(jsonStr);
 
         if (data.Abn) {
           // Assuming data.AbnStatus contains "Active" or "Cancelled" (or similar)
-          const status = data.AbnStatus?.toLowerCase() === "active" ? "active" : "inactive";
+          const status =
+            data.AbnStatus?.toLowerCase() === "active" ? "active" : "inactive";
           setAbnStatus(status);
         } else {
           setAbnError("ABN not found or invalid during lookup.");
@@ -141,7 +150,7 @@ export default function OrganizationProfile() {
         }
       } catch (error) {
         setAbnError("Error looking up ABN.");
-        console.error('ABN lookup error:', error);
+        console.error("ABN lookup error:", error);
         setAbnStatus("inactive"); // Default to inactive on error
       } finally {
         setAbnLookupLoading(false);
@@ -169,23 +178,25 @@ export default function OrganizationProfile() {
   return (
     <div className="min-h-screen bg-white flex">
       <SidebarProfile userType="organization" user={sidebarUser} />
-      <div className="flex-1 md:pl-72 pt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-rose-50 p-4 rounded-lg mt-4">
-            <p className="text-rose-700 text-sm">
+      <div className="flex-1 md:pl-72 pt-8 pb-16 md:pb-0">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pb-16 md:pb-0">
+          <div className="bg-rose-50 p-4 rounded-lg mt-4 w-full">
+            <p className="text-rose-700 text-sm break-words w-full">
               Your profile isn't visible to Care Workers until your account is
               approved
             </p>
           </div>
 
-          <div className="bg-[#2954bd] text-white rounded-lg p-6 mt-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+          <div className="bg-[#2954bd] text-white rounded-lg p-4 sm:p-6 mt-4 w-full">
+            <div className="flex flex-col sm:flex-row items-center justify-between w-full">
+              <div className="flex items-center space-x-4 w-full">
                 <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
                   {orgData.name?.[0]?.toUpperCase() || "O"}
                 </div>
-                <div>
-                  <h1 className="text-2xl font-semibold">{orgData.name}</h1>
+                <div className="w-full">
+                  <h1 className="text-2xl font-semibold break-words">
+                    {orgData.name}
+                  </h1>
                   <p className="text-white/80">Organization</p>
                 </div>
               </div>
@@ -199,7 +210,7 @@ export default function OrganizationProfile() {
             </div>
           </div>
 
-          <div className="py-8">
+          <div className="py-8 w-full">
             <section>
               <div className="flex items-center justify-between mb-1 mt-6">
                 <h2 className="text-xl font-semibold text-black">
@@ -208,12 +219,18 @@ export default function OrganizationProfile() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <p className="text-gray-500 text-sm mb-1 font-semibold">ABN</p>
+                  <p className="text-gray-500 text-sm mb-1 font-semibold">
+                    ABN
+                  </p>
                   <p className="text-gray-900">{orgData.abn}</p>
                   {abnLookupLoading ? (
-                    <span className="text-gray-500 text-sm mt-2 inline-block">Loading ABN status...</span>
+                    <span className="text-gray-500 text-sm mt-2 inline-block">
+                      Loading ABN status...
+                    </span>
                   ) : abnError ? (
-                    <span className="text-red-600 text-sm mt-2 inline-block">Error: {abnError}</span>
+                    <span className="text-red-600 text-sm mt-2 inline-block">
+                      Error: {abnError}
+                    </span>
                   ) : (
                     <span
                       className={`px-2 py-1 rounded text-xs font-semibold mt-2 inline-block min-w-[80px] text-center ${
@@ -224,20 +241,31 @@ export default function OrganizationProfile() {
                           : "bg-gray-100 text-gray-600"
                       }`}
                     >
-                      ABN {abnStatus === "active" ? "Active" : abnStatus === "inactive" ? "Inactive" : "N/A"}
+                      ABN{" "}
+                      {abnStatus === "active"
+                        ? "Active"
+                        : abnStatus === "inactive"
+                        ? "Inactive"
+                        : "N/A"}
                     </span>
                   )}
                 </div>
                 <div>
-                  <p className="text-gray-500 text-sm mb-1 font-semibold">Phone</p>
+                  <p className="text-gray-500 text-sm mb-1 font-semibold">
+                    Phone
+                  </p>
                   <p className="text-gray-900">{orgData.phone}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 text-sm mb-1 font-semibold">Address</p>
+                  <p className="text-gray-500 text-sm mb-1 font-semibold">
+                    Address
+                  </p>
                   <p className="text-gray-900">{orgData.address}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 text-sm mb-1 font-semibold">Website</p>
+                  <p className="text-gray-500 text-sm mb-1 font-semibold">
+                    Website
+                  </p>
                   <p className="text-gray-900">
                     {orgData.website || "Not provided"}
                   </p>
@@ -246,18 +274,22 @@ export default function OrganizationProfile() {
             </section>
 
             {/* Statistics Section */}
-            <section className="mt-8">
-              <h2 className="text-xl font-semibold text-black mb-4">Statistics Overview</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <section className="mt-8 w-full">
+              <h2 className="text-xl font-semibold text-black mb-4">
+                Statistics Overview
+              </h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
                 {/* Shifts Posted Graph */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.5 }}
-                  className="bg-white rounded-lg shadow-md p-6 border border-gray-100"
+                  className="bg-white rounded-lg shadow-md p-6 border border-gray-100 w-full overflow-x-auto"
                 >
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Shifts Posted Over Time</h3>
-                  <div className="h-64">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    Shifts Posted Over Time
+                  </h3>
+                  <div className="h-64 min-w-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
                         data={mockShiftsData}
@@ -268,14 +300,14 @@ export default function OrganizationProfile() {
                         <YAxis stroke="#6b7280" />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: '#fff',
-                            border: '1px solid #e0e0e0',
-                            borderRadius: '8px',
-                            padding: '10px',
-                            boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.05)',
+                            backgroundColor: "#fff",
+                            border: "1px solid #e0e0e0",
+                            borderRadius: "8px",
+                            padding: "10px",
+                            boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.05)",
                           }}
-                          labelStyle={{ fontWeight: 'bold', color: '#333' }}
-                          itemStyle={{ color: '#2954bd' }}
+                          labelStyle={{ fontWeight: "bold", color: "#333" }}
+                          itemStyle={{ color: "#2954bd" }}
                         />
                         <Line
                           type="monotone"
@@ -295,10 +327,12 @@ export default function OrganizationProfile() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4, duration: 0.5 }}
-                  className="bg-white rounded-lg shadow-md p-6 border border-gray-100"
+                  className="bg-white rounded-lg shadow-md p-6 border border-gray-100 w-full overflow-x-auto"
                 >
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Worker Interactions</h3>
-                  <div className="h-64">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    Worker Interactions
+                  </h3>
+                  <div className="h-64 min-w-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={mockInteractionsData}
@@ -309,16 +343,20 @@ export default function OrganizationProfile() {
                         <YAxis stroke="#6b7280" />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: '#fff',
-                            border: '1px solid #e0e0e0',
-                            borderRadius: '8px',
-                            padding: '10px',
-                            boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.05)',
+                            backgroundColor: "#fff",
+                            border: "1px solid #e0e0e0",
+                            borderRadius: "8px",
+                            padding: "10px",
+                            boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.05)",
                           }}
-                          labelStyle={{ fontWeight: 'bold', color: '#333' }}
-                          itemStyle={{ color: '#2954bd' }}
+                          labelStyle={{ fontWeight: "bold", color: "#333" }}
+                          itemStyle={{ color: "#2954bd" }}
                         />
-                        <Bar dataKey="interactions" fill="#2954bd" radius={[4, 4, 0, 0]} />
+                        <Bar
+                          dataKey="interactions"
+                          fill="#2954bd"
+                          radius={[4, 4, 0, 0]}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

@@ -21,7 +21,7 @@ export default function InboxPage() {
   return (
     <div className="flex min-h-screen bg-[#f6f8fa] relative overflow-hidden">
       <SidebarProfile user={sidebarUser} userType="staff" />
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 z-10">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 z-10 pb-24 md:pb-0">
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}

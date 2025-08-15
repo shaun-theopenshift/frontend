@@ -68,19 +68,18 @@ export default function Home() {
 
   //twak.to
   useEffect(() => {
-  const script = document.createElement("script");
-  script.src = "https://embed.tawk.to/6876316f7f202b19181eb4e7/1j06r26po";
-  script.async = true;
-  script.charset = "UTF-8";
-  script.setAttribute("crossorigin", "*");
-  document.body.appendChild(script);
+    const script = document.createElement("script");
+    script.src = "https://embed.tawk.to/6876316f7f202b19181eb4e7/1j06r26po";
+    script.async = true;
+    script.charset = "UTF-8";
+    script.setAttribute("crossorigin", "*");
+    document.body.appendChild(script);
 
-  return () => {
-    // Optional: Cleanup if component unmounts
-    document.body.removeChild(script);
-  };
-}, []);
-
+    return () => {
+      // Optional: Cleanup if component unmounts
+      document.body.removeChild(script);
+    };
+  }, []);
 
   // Data for the feature cards
   const featureCards = [
@@ -277,14 +276,18 @@ export default function Home() {
     }
   };
 
-  
-
   return (
-    <main className="flex min-h-screen flex-col font-ubuntu">
+    <main className="flex min-h-screen flex-col font-ubuntu pb-16 md:pb-0">
       <style jsx global>{`
         @import url("https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap");
         .font-ubuntu {
           font-family: "Ubuntu", sans-serif;
+        }
+        #tawkchat-minimized-box,
+        .tawk-min-container {
+          bottom: 80px !important;
+          right: 16px !important;
+          z-index: 9999 !important;
         }
       `}</style>
       <Navigation />
@@ -294,7 +297,7 @@ export default function Home() {
         <motion.div
           ref={curvedBgRef}
           className="absolute right-0 bottom-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#fe7239] rounded-full z-0"
-          style={{ scale: curvedBgScale, opacity: curvedBgOpacity}}
+          style={{ scale: curvedBgScale, opacity: curvedBgOpacity }}
         ></motion.div>
 
         <div className="max-w-7xl mx-auto relative z-10">

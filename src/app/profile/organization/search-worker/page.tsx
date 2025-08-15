@@ -1,27 +1,63 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, Fragment } from 'react';
-import SidebarProfile from '../../../components/SidebarProfile';
-import { MapPinIcon, MagnifyingGlassIcon, ChevronDownIcon, ChevronUpIcon, FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import Player from 'lottie-react';
-import searchWorkerLottie from './Search-Worker.json';
-import { Disclosure, Listbox, Transition, Dialog } from '@headlessui/react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, Fragment } from "react";
+import SidebarProfile from "../../../components/SidebarProfile";
+import {
+  MapPinIcon,
+  MagnifyingGlassIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  FunnelIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import Player from "lottie-react";
+import searchWorkerLottie from "./Search-Worker.json";
+import { Disclosure, Listbox, Transition, Dialog } from "@headlessui/react";
+import { motion, AnimatePresence } from "framer-motion";
 
-const sidebarUser = { name: 'Organization' };
+const sidebarUser = { name: "Organization" };
 
 // Define filter options
-const genderOptions = ['Male', 'Female', 'Other'];
-const badgeOptions = ['lgbtq', 'non_smoker', 'pet_friendly'];
-const vaccinationOptions = ['covid_19', 'flu', 'tetanus'];
-const languageOptions = ['English', 'Spanish', 'French', 'German', 'Chinese', 'Other'];
-const interestOptions = ['cooking', 'movies', 'pets', 'sports', 'gardening', 'music', 'photography', 'travel', 'art', 'reading', 'games', 'festivities', 'fitness'];
-const preferenceOptions = ['non_smoker', 'no_pets', 'male_only', 'female_only'];
-const serviceOptions = ["everyday", "self_care", "nursing", "healthcare"];
-const availabilityOptions = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const genderOptions = ["Male", "Female", "Other"];
+const badgeOptions = ["lgbtq", "non_smoker", "pet_friendly"];
+const vaccinationOptions = ["covid_19", "flu", "tetanus"];
+const languageOptions = [
+  "English",
+  "Spanish",
+  "French",
+  "German",
+  "Chinese",
+  "Other",
+];
+const interestOptions = [
+  "cooking",
+  "movies",
+  "pets",
+  "sports",
+  "gardening",
+  "music",
+  "photography",
+  "travel",
+  "art",
+  "reading",
+  "games",
+  "festivities",
+  "fitness",
+];
+const preferenceOptions = ["non_smoker", "no_pets", "male_only", "female_only"];
+const serviceOptions = ["self_care", "nursing"];
+const availabilityOptions = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
 
 export default function SearchWorkerPage() {
-  const [address, setAddress] = useState('');
+  const [address, setAddress] = useState("");
   const [previousSearch, setPreviousSearch] = useState<string | null>(null);
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,31 +83,34 @@ export default function SearchWorkerPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (address.trim()) params.append('suburb', address);
-      params.append('page', page.toString());
-      params.append('page_size', pageSize.toString());
+      if (address.trim()) params.append("suburb", address);
+      params.append("page", page.toString());
+      params.append("page_size", pageSize.toString());
 
-      gender.forEach(g => params.append('gender', g.toLowerCase()));
-      badges.forEach(b => params.append('badges', b));
-      vaccinations.forEach(v => params.append('vaccinations', v));
-      languages.forEach(l => params.append('languages', l));
-      interests.forEach(i => params.append('interests', i));
-      preferences.forEach(p => params.append('preferences', p));
-      services.forEach(s => params.append('services', s));
-      availability.forEach(a => params.append('availability', a));
+      gender.forEach((g) => params.append("gender", g.toLowerCase()));
+      badges.forEach((b) => params.append("badges", b));
+      vaccinations.forEach((v) => params.append("vaccinations", v));
+      languages.forEach((l) => params.append("languages", l));
+      interests.forEach((i) => params.append("interests", i));
+      preferences.forEach((p) => params.append("preferences", p));
+      services.forEach((s) => params.append("services", s));
+      availability.forEach((a) => params.append("availability", a));
 
       console.log("Fetching with params:", params.toString()); // Log parameters for debugging
 
-      const sessionRes = await fetch('/api/auth/session');
+      const sessionRes = await fetch("/api/auth/session");
       const session = await sessionRes.json();
-      if (!session?.accessToken) throw new Error('No access token available');
+      if (!session?.accessToken) throw new Error("No access token available");
 
-      const res = await fetch(`https://api.theopenshift.com/v1/orgs/search_users?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${session.accessToken}`,
-          'Accept': 'application/json',
-        },
-      });
+      const res = await fetch(
+        `https://api.theopenshift.com/v1/orgs/search_users?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
       const data = await res.json();
       setResults(data.items || []);
       setTotalItems(data.total || 0);
@@ -97,7 +136,18 @@ export default function SearchWorkerPage() {
     // Added 'address' to the dependency array to trigger search when address changes
     triggerSearch(currentPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, gender, badges, vaccinations, languages, interests, preferences, services, availability, currentPage]);
+  }, [
+    address,
+    gender,
+    badges,
+    vaccinations,
+    languages,
+    interests,
+    preferences,
+    services,
+    availability,
+    currentPage,
+  ]);
 
   const handlePageChange = (page: number) => {
     if (page > 0 && page <= totalPages) {
@@ -105,9 +155,13 @@ export default function SearchWorkerPage() {
     }
   };
 
-  const toggleFilter = (filterArray: string[], setFilterArray: React.Dispatch<React.SetStateAction<string[]>>, item: string) => {
-    setFilterArray(prev =>
-      prev.includes(item) ? prev.filter(x => x !== item) : [...prev, item]
+  const toggleFilter = (
+    filterArray: string[],
+    setFilterArray: React.Dispatch<React.SetStateAction<string[]>>,
+    item: string
+  ) => {
+    setFilterArray((prev) =>
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
     );
   };
 
@@ -120,7 +174,7 @@ export default function SearchWorkerPage() {
     setPreferences([]);
     setServices([]);
     setAvailability([]);
-    setAddress(''); // Clear address as well
+    setAddress(""); // Clear address as well
     setCurrentPage(1);
     triggerSearch(1);
   };
@@ -132,8 +186,16 @@ export default function SearchWorkerPage() {
     onToggle: (item: string) => void;
   }
 
-  const FilterSection: React.FC<FilterSectionProps> = ({ title, options, selected, onToggle }) => (
-    <Disclosure as="div" className="mb-4 bg-white rounded-lg shadow-sm border border-gray-100">
+  const FilterSection: React.FC<FilterSectionProps> = ({
+    title,
+    options,
+    selected,
+    onToggle,
+  }) => (
+    <Disclosure
+      as="div"
+      className="mb-4 bg-white rounded-lg shadow-sm border border-gray-100"
+    >
       {({ open }) => (
         <>
           <Disclosure.Button className="flex justify-between w-full px-4 py-3 text-left text-lg font-medium text-gray-800 hover:bg-gray-50 focus:outline-none focus-visible:ring focus-visible:ring-[#3464b4] focus-visible:ring-opacity-75 rounded-t-lg">
@@ -163,17 +225,45 @@ export default function SearchWorkerPage() {
                       type="button"
                       onClick={() => onToggle(item)}
                       className={`relative px-4 py-2 rounded-full border transition-all duration-150 text-sm font-medium
-                        ${isSelected ? 'bg-[#3464b4] text-white border-[#3464b4]' : 'bg-white text-[#3464b4] border-[#3464b4]'}
+                        ${
+                          isSelected
+                            ? "bg-[#3464b4] text-white border-[#3464b4]"
+                            : "bg-white text-[#3464b4] border-[#3464b4]"
+                        }
                         shadow-sm flex items-center justify-center`}
                       whileTap={{ scale: 0.95 }}
                       whileHover={{ scale: 1.02 }}
                     >
                       {isSelected && (
                         <span className="absolute left-2 top-1/2 -translate-y-1/2">
-                          <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#fff"/><path d="M6 10.5l3 3 5-5" stroke="#3464b4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                          >
+                            <circle cx="10" cy="10" r="10" fill="#fff" />
+                            <path
+                              d="M6 10.5l3 3 5-5"
+                              stroke="#3464b4"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
                         </span>
                       )}
-                      <span className={`${isSelected ? 'ml-4' : ''} mr-2 capitalize`}>{item.replace(/_/g, ' ')}</span>
+                      <span
+                        className={`${
+                          isSelected ? "ml-4" : ""
+                        } mr-2 capitalize`}
+                      >
+                        {item === "self_care"
+                          ? "Personal Care Worker"
+                          : item === "nursing"
+                          ? "Nursing"
+                          : item.replace(/_/g, " ")}
+                      </span>
                     </motion.button>
                   );
                 })}
@@ -186,14 +276,14 @@ export default function SearchWorkerPage() {
   );
 
   const allAppliedFilters = [
-    ...gender.map(g => ({ type: 'Gender', value: g })),
-    ...badges.map(b => ({ type: 'Badge', value: b })),
-    ...vaccinations.map(v => ({ type: 'Vaccination', value: v })),
-    ...languages.map(l => ({ type: 'Language', value: l })),
-    ...interests.map(i => ({ type: 'Interest', value: i })),
-    ...preferences.map(p => ({ type: 'Preference', value: p })),
-    ...services.map(s => ({ type: 'Service', value: s })),
-    ...availability.map(a => ({ type: 'Availability', value: a })),
+    ...gender.map((g) => ({ type: "Gender", value: g })),
+    ...badges.map((b) => ({ type: "Badge", value: b })),
+    ...vaccinations.map((v) => ({ type: "Vaccination", value: v })),
+    ...languages.map((l) => ({ type: "Language", value: l })),
+    ...interests.map((i) => ({ type: "Interest", value: i })),
+    ...preferences.map((p) => ({ type: "Preference", value: p })),
+    ...services.map((s) => ({ type: "Service", value: s })),
+    ...availability.map((a) => ({ type: "Availability", value: a })),
   ];
 
   return (
@@ -209,12 +299,16 @@ export default function SearchWorkerPage() {
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Filters</h2>
           <div className="space-y-4">
             {/* Top Filters */}
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">Top Filters</h3>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              Top Filters
+            </h3>
             <FilterSection
               title="Availability"
               options={availabilityOptions}
               selected={availability}
-              onToggle={(item) => toggleFilter(availability, setAvailability, item)}
+              onToggle={(item) =>
+                toggleFilter(availability, setAvailability, item)
+              }
             />
             <FilterSection
               title="Services"
@@ -226,11 +320,12 @@ export default function SearchWorkerPage() {
               title="Preferences"
               options={preferenceOptions}
               selected={preferences}
-              onToggle={(item) => toggleFilter(preferences, setPreferences, item)}
+              onToggle={(item) =>
+                toggleFilter(preferences, setPreferences, item)
+              }
             />
-
-            <div className="border-t border-gray-200 my-6"></div> {/* Separator Line */}
-
+            <div className="border-t border-gray-200 my-6"></div>{" "}
+            {/* Separator Line */}
             {/* Additional Filters - Wrapped in Disclosure */}
             <Disclosure as="div">
               {({ open }) => (
@@ -258,31 +353,41 @@ export default function SearchWorkerPage() {
                           title="Gender"
                           options={genderOptions}
                           selected={gender}
-                          onToggle={(item) => toggleFilter(gender, setGender, item)}
+                          onToggle={(item) =>
+                            toggleFilter(gender, setGender, item)
+                          }
                         />
                         <FilterSection
                           title="Badges"
                           options={badgeOptions}
                           selected={badges}
-                          onToggle={(item) => toggleFilter(badges, setBadges, item)}
+                          onToggle={(item) =>
+                            toggleFilter(badges, setBadges, item)
+                          }
                         />
                         <FilterSection
                           title="Vaccinations"
                           options={vaccinationOptions}
                           selected={vaccinations}
-                          onToggle={(item) => toggleFilter(vaccinations, setVaccinations, item)}
+                          onToggle={(item) =>
+                            toggleFilter(vaccinations, setVaccinations, item)
+                          }
                         />
                         <FilterSection
                           title="Languages"
                           options={languageOptions}
                           selected={languages}
-                          onToggle={(item) => toggleFilter(languages, setLanguages, item)}
+                          onToggle={(item) =>
+                            toggleFilter(languages, setLanguages, item)
+                          }
                         />
                         <FilterSection
                           title="Interests"
                           options={interestOptions}
                           selected={interests}
-                          onToggle={(item) => toggleFilter(interests, setInterests, item)}
+                          onToggle={(item) =>
+                            toggleFilter(interests, setInterests, item)
+                          }
                         />
                       </div>
                     </Disclosure.Panel>
@@ -294,18 +399,25 @@ export default function SearchWorkerPage() {
         </div>
 
         {/* Main Content Area (Search Form, Applied Filters, Results) */}
-        <div className="w-full max-w-2xl lg:max-w-3xl flex-grow py-10">
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-6 text-center md:text-left">Search Workers</h1>
+        <div className="w-full max-w-2xl lg:max-w-3xl flex-grow py-10 pb-28 md:pb-0">
+          <h1 className="text-3xl font-extrabold text-gray-900 mb-6 text-center md:text-left">
+            Search Workers
+          </h1>
 
           {/* Search Form */}
-          <form onSubmit={handleSearch} className="bg-white rounded-lg shadow p-6 mb-8 border border-gray-100">
-            <div className="mb-4 text-gray-700 font-semibold">Location Search</div>
+          <form
+            onSubmit={handleSearch}
+            className="bg-white rounded-lg shadow p-6 mb-8 border border-gray-100"
+          >
+            <div className="mb-4 text-gray-700 font-semibold">
+              Location Search
+            </div>
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <input
                 type="text"
                 placeholder="Enter Suburb or Postcode"
                 value={address}
-                onChange={e => setAddress(e.target.value)}
+                onChange={(e) => setAddress(e.target.value)}
                 className="flex-1 px-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-[#3464b4] focus:outline-none bg-white text-gray-900 w-full sm:w-auto transition duration-150 ease-in-out"
               />
               <motion.button
@@ -326,7 +438,10 @@ export default function SearchWorkerPage() {
                 transition={{ duration: 0.3 }}
               >
                 <MapPinIcon className="h-5 w-5 text-gray-400 mr-2" />
-                <span className="flex-1">Previous search: <span className="font-medium">{previousSearch}</span></span>
+                <span className="flex-1">
+                  Previous search:{" "}
+                  <span className="font-medium">{previousSearch}</span>
+                </span>
               </motion.div>
             )}
           </form>
@@ -346,7 +461,11 @@ export default function SearchWorkerPage() {
 
           {/* Mobile Filter Sidebar (Dialog) */}
           <Transition.Root show={isFilterSidebarOpen} as={Fragment}>
-            <Dialog as="div" className="relative z-40 md:hidden" onClose={setIsFilterSidebarOpen}>
+            <Dialog
+              as="div"
+              className="relative z-40 md:hidden"
+              onClose={setIsFilterSidebarOpen}
+            >
               <Transition.Child
                 as={Fragment}
                 enter="transition-opacity ease-linear duration-300"
@@ -371,7 +490,9 @@ export default function SearchWorkerPage() {
                 >
                   <Dialog.Panel className="relative mr-auto flex h-full w-full max-w-xs flex-col overflow-y-auto bg-gray-50 py-4 pb-12 shadow-xl">
                     <div className="flex items-center justify-between px-4">
-                      <h2 className="text-2xl font-bold text-gray-900">Filters</h2>
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        Filters
+                      </h2>
                       <button
                         type="button"
                         className="-mr-2 flex h-10 w-10 items-center justify-center rounded-md bg-white p-2 text-gray-400"
@@ -385,28 +506,35 @@ export default function SearchWorkerPage() {
                     {/* Filters in Mobile Sidebar */}
                     <div className="mt-4 border-t border-gray-200 px-4">
                       {/* Top Filters */}
-                      <h3 className="text-xl font-semibold text-gray-800 mb-2 mt-4">Top Filters</h3>
+                      <h3 className="text-xl font-semibold text-gray-800 mb-2 mt-4">
+                        Top Filters
+                      </h3>
                       <FilterSection
                         title="Availability"
                         options={availabilityOptions}
                         selected={availability}
-                        onToggle={(item) => toggleFilter(availability, setAvailability, item)}
+                        onToggle={(item) =>
+                          toggleFilter(availability, setAvailability, item)
+                        }
                       />
                       <FilterSection
                         title="Services"
                         options={serviceOptions}
                         selected={services}
-                        onToggle={(item) => toggleFilter(services, setServices, item)}
+                        onToggle={(item) =>
+                          toggleFilter(services, setServices, item)
+                        }
                       />
                       <FilterSection
                         title="Preferences"
                         options={preferenceOptions}
                         selected={preferences}
-                        onToggle={(item) => toggleFilter(preferences, setPreferences, item)}
+                        onToggle={(item) =>
+                          toggleFilter(preferences, setPreferences, item)
+                        }
                       />
-
-                      <div className="border-t border-gray-200 my-6"></div> {/* Separator Line */}
-
+                      <div className="border-t border-gray-200 my-6"></div>{" "}
+                      {/* Separator Line */}
                       {/* Additional Filters - Wrapped in Disclosure */}
                       <Disclosure as="div">
                         {({ open }) => (
@@ -434,31 +562,53 @@ export default function SearchWorkerPage() {
                                     title="Gender"
                                     options={genderOptions}
                                     selected={gender}
-                                    onToggle={(item) => toggleFilter(gender, setGender, item)}
+                                    onToggle={(item) =>
+                                      toggleFilter(gender, setGender, item)
+                                    }
                                   />
                                   <FilterSection
                                     title="Badges"
                                     options={badgeOptions}
                                     selected={badges}
-                                    onToggle={(item) => toggleFilter(badges, setBadges, item)}
+                                    onToggle={(item) =>
+                                      toggleFilter(badges, setBadges, item)
+                                    }
                                   />
                                   <FilterSection
                                     title="Vaccinations"
                                     options={vaccinationOptions}
                                     selected={vaccinations}
-                                    onToggle={(item) => toggleFilter(vaccinations, setVaccinations, item)}
+                                    onToggle={(item) =>
+                                      toggleFilter(
+                                        vaccinations,
+                                        setVaccinations,
+                                        item
+                                      )
+                                    }
                                   />
                                   <FilterSection
                                     title="Languages"
                                     options={languageOptions}
                                     selected={languages}
-                                    onToggle={(item) => toggleFilter(languages, setLanguages, item)}
+                                    onToggle={(item) =>
+                                      toggleFilter(
+                                        languages,
+                                        setLanguages,
+                                        item
+                                      )
+                                    }
                                   />
                                   <FilterSection
                                     title="Interests"
                                     options={interestOptions}
                                     selected={interests}
-                                    onToggle={(item) => toggleFilter(interests, setInterests, item)}
+                                    onToggle={(item) =>
+                                      toggleFilter(
+                                        interests,
+                                        setInterests,
+                                        item
+                                      )
+                                    }
                                   />
                                 </div>
                               </Disclosure.Panel>
@@ -482,7 +632,9 @@ export default function SearchWorkerPage() {
               transition={{ duration: 0.3 }}
             >
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-semibold text-gray-800">Applied Filters</h3>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Applied Filters
+                </h3>
                 <motion.button
                   onClick={clearAllFilters}
                   className="text-sm text-[#3464b4] hover:text-[#2a5196] font-medium"
@@ -498,7 +650,7 @@ export default function SearchWorkerPage() {
                     key={index}
                     className="flex items-center bg-[#e0e9f8] text-[#3464b4] text-sm font-medium px-3 py-1 rounded-full"
                   >
-                    {filter.type}: {filter.value.replace(/_/g, ' ')}
+                    {filter.type}: {filter.value.replace(/_/g, " ")}
                   </span>
                 ))}
               </div>
@@ -534,17 +686,34 @@ export default function SearchWorkerPage() {
                     >
                       <div className="flex items-center mb-3">
                         <div className="w-14 h-14 rounded-full bg-[#3464b4] flex items-center justify-center text-white text-xl font-bold mr-4 flex-shrink-0">
-                          {`${user.fname?.[0] || ''}${user.lname?.[0] || ''}`.toUpperCase() || '?'}
+                          {`${user.fname?.[0] || ""}${
+                            user.lname?.[0] || ""
+                          }`.toUpperCase() || "?"}
                         </div>
                         <div>
-                          <div className="text-lg font-semibold text-gray-900">{`${user.fname || ''} ${user.lname || ''}`.trim() || 'No Name'}</div>
-                          {user.role && <div className="text-sm text-gray-600">{user.role}</div>}
-                          {user.address && <div className="text-sm text-gray-600">{user.address}</div>}
+                          <div className="text-lg font-semibold text-gray-900">
+                            {`${user.fname || ""} ${user.lname || ""}`.trim() ||
+                              "No Name"}
+                          </div>
+                          {user.role && (
+                            <div className="text-sm text-gray-600">
+                              {user.role}
+                            </div>
+                          )}
+                          {user.address && (
+                            <div className="text-sm text-gray-600">
+                              {user.address}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <motion.button
                         className="mt-2 px-4 py-2 bg-[#3464b4] text-white rounded-md hover:bg-[#2a5196] transition font-semibold shadow-sm"
-                        onClick={() => window.location.href = `/profile/organization/search-worker/profile/${user.user_id || user.id}`}
+                        onClick={() =>
+                          (window.location.href = `/profile/organization/search-worker/profile/${
+                            user.user_id || user.id
+                          }`)
+                        }
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
@@ -573,8 +742,8 @@ export default function SearchWorkerPage() {
                       onClick={() => handlePageChange(index + 1)}
                       className={`px-4 py-2 rounded-md transition ${
                         currentPage === index + 1
-                          ? 'bg-[#3464b4] text-white font-bold'
-                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                          ? "bg-[#3464b4] text-white font-bold"
+                          : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
                       }`}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -602,8 +771,12 @@ export default function SearchWorkerPage() {
               <div className="w-[300px] h-[300px] sm:w-[400px] sm:h-[400px]">
                 <Player autoplay loop animationData={searchWorkerLottie} />
               </div>
-              <p className="text-xl font-semibold text-gray-700 mt-4">No workers found matching your criteria.</p>
-              <p className="text-gray-500 mt-2 text-center">Try adjusting your search filters or location.</p>
+              <p className="text-xl font-semibold text-gray-700 mt-4">
+                No workers found matching your criteria.
+              </p>
+              <p className="text-gray-500 mt-2 text-center">
+                Try adjusting your search filters or location.
+              </p>
             </div>
           )}
         </div>
