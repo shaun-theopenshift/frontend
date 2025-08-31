@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   ArrowRightIcon,
+  ArrowDownTrayIcon,
   CalendarIcon,
   UserGroupIcon,
   BuildingOfficeIcon,
@@ -47,6 +48,31 @@ interface FormErrorsState {
 export default function Home() {
   const [activeTab, setActiveTab] = useState("organization");
   const { user, isLoading } = useUser();
+
+  //PWA INSTALL BUTTON
+  
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallButton, setShowInstallButton] = useState(true);
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallButton(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      // Optionally hide the button after install
+      if (outcome === "accepted") setShowInstallButton(false);
+      setDeferredPrompt(null);
+    }
+  };
 
   const ctaFooterRef = useRef(null);
 
@@ -351,6 +377,17 @@ export default function Home() {
                     </>
                   ))}
               </div>
+              {showInstallButton && (
+  <div className="flex justify-center lg:justify-start mt-4">
+    <button
+      onClick={handleInstallClick}
+      className="flex items-center gap-2 px-6 py-3 border-2 border-[#3464b4] text-[#3464b4] rounded-lg shadow-md font-medium bg-white hover:bg-blue-800 hover:text-white transition"
+    >
+      <ArrowDownTrayIcon className="w-5 h-5" />
+      Install App
+    </button>
+  </div>
+)}
             </div>
 
             <motion.div
@@ -369,6 +406,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+  
 
       {/* Features Section - Changed background for visibility */}
       <section
