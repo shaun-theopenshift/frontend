@@ -1,6 +1,6 @@
 {
-  "name": "TheOpenShift",
-  "short_name": "OpenShift",
+  "name": "TheOpenServices",
+  "short_name": "OpenServices",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f6f8fa",
