@@ -52,7 +52,7 @@ export default function Home() {
   //PWA INSTALL BUTTON
   
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showInstallButton, setShowInstallButton] = useState(true);
+  const [showInstallButton, setShowInstallButton] = useState(false);
   useEffect(() => {
     const handler = (e: any) => {
       e.preventDefault();
