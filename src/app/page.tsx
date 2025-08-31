@@ -50,7 +50,6 @@ export default function Home() {
   const { user, isLoading } = useUser();
 
   //PWA INSTALL BUTTON
-  
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
   useEffect(() => {
@@ -73,6 +72,20 @@ export default function Home() {
       setDeferredPrompt(null);
     }
   };
+
+  //Detect Device if its android or ios
+  function getMobileOS() {
+  const userAgent = typeof window !== "undefined" ? window.navigator.userAgent : "";
+  if (/android/i.test(userAgent)) return "android";
+  if (/iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream) return "ios";
+  return "other";
+}
+
+const [mobileOS, setMobileOS] = useState("other");
+
+useEffect(() => {
+  setMobileOS(getMobileOS());
+}, []);
 
   const ctaFooterRef = useRef(null);
 
@@ -377,7 +390,7 @@ export default function Home() {
                     </>
                   ))}
               </div>
-              {showInstallButton && (
+              {mobileOS === "android" && showInstallButton && (
   <div className="flex justify-center lg:justify-start mt-4">
     <button
       onClick={handleInstallClick}
@@ -386,6 +399,16 @@ export default function Home() {
       <ArrowDownTrayIcon className="w-5 h-5" />
       Install App
     </button>
+  </div>
+)}
+{mobileOS === "ios" && (
+  <div className="flex justify-center lg:justify-start mt-4">
+    <div className="px-6 py-3 border-2 border-[#3464b4] text-[#3464b4] rounded-lg shadow-md bg-white flex items-center gap-2">
+      <ArrowDownTrayIcon className="w-5 h-5" />
+      <span>
+        To install, tap <strong>Share</strong> <span role="img" aria-label="share">🔗</span> then <strong>Add to Home Screen</strong>
+      </span>
+    </div>
   </div>
 )}
             </div>
