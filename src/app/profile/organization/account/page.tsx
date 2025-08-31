@@ -260,23 +260,11 @@ const App: React.FC = () => {
                       "w-full py-2.5 text-sm leading-5 font-medium rounded-lg",
                       "focus:outline-none focus:ring-2 ring-offset-2 ring-offset-blue-400 ring-white ring-opacity-60",
                       selected
-                        ? `bg-[${primaryColor}] text-white shadow-md` // Changed to primary color background and white text
+                        ? `bg-[${primaryColor}] text-white shadow-md` 
                         : "text-gray-600 hover:bg-white/[0.20] hover:text-gray-900"
                     )
                   }
                 >
-                  {index === 0 && (
-                    <Settings className="inline-block w-4 h-4 mr-2" />
-                  )}
-                  {index === 1 && (
-                    <Lock className="inline-block w-4 h-4 mr-2" />
-                  )}
-                  {index === 2 && (
-                    <FileText className="inline-block w-4 h-4 mr-2" />
-                  )}
-                  {index === 3 && (
-                    <Mail className="inline-block w-4 h-4 mr-2" />
-                  )}
                   {category}
                 </Tab>
               )
@@ -657,7 +645,7 @@ const App: React.FC = () => {
                     </span>
                   </a>
                   <a
-                    href="tel:+1234567890"
+                    href="tel:+61438143059"
                     className={`flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 bg-gray-50 text-[${primaryColor}] hover:bg-gray-100 transition duration-200 shadow-sm`}
                   >
                     <Phone className="w-8 h-8 mb-2" />
@@ -703,7 +691,7 @@ const App: React.FC = () => {
                                 type="text"
                                 id="incident-title"
                                 placeholder="Brief summary of the incident"
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[${primaryColor}] focus:border-transparent transition duration-200"
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[${primaryColor}] focus:border-transparent transition duration-200 text-black"
                                 value={incidentTitle}
                                 onChange={(e) =>
                                   setIncidentTitle(e.target.value)
@@ -721,7 +709,7 @@ const App: React.FC = () => {
                                 id="incident-description"
                                 rows={4}
                                 placeholder="Provide a detailed description of the incident"
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[${primaryColor}] focus:border-transparent transition duration-200"
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[${primaryColor}] focus:border-transparent transition duration-200 text-black"
                                 value={incidentDescription}
                                 onChange={(e) =>
                                   setIncidentDescription(e.target.value)
@@ -738,7 +726,7 @@ const App: React.FC = () => {
                               <input
                                 type="datetime-local"
                                 id="incident-datetime"
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[${primaryColor}] focus:border-transparent transition duration-200"
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[${primaryColor}] focus:border-transparent transition duration-200 text-black"
                                 value={incidentDateTime}
                                 onChange={(e) =>
                                   setIncidentDateTime(e.target.value)
@@ -756,7 +744,7 @@ const App: React.FC = () => {
                                 id="incident-help"
                                 rows={3}
                                 placeholder="e.g., technical support, account recovery, bug fix"
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[${primaryColor}] focus:border-transparent transition duration-200"
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[${primaryColor}] focus:border-transparent transition duration-200 text-black"
                                 value={incidentHelpNeeded}
                                 onChange={(e) =>
                                   setIncidentHelpNeeded(e.target.value)
@@ -805,7 +793,7 @@ const App: React.FC = () => {
                                     let statusColorClass =
                                       "bg-gray-300 text-gray-700"; // Default
                                     if (
-                                      request.status?.toLowerCase() === "open"
+                                      request.status?.toUpperCase() === "OPEN"
                                     ) {
                                       statusColorClass =
                                         "bg-orange-100 text-orange-800";

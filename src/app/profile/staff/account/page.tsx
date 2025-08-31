@@ -260,23 +260,11 @@ const App: React.FC = () => {
                       "w-full py-2.5 text-sm leading-5 font-medium rounded-lg",
                       "focus:outline-none focus:ring-2 ring-offset-2 ring-offset-blue-400 ring-white ring-opacity-60",
                       selected
-                        ? `bg-[${primaryColor}] text-white shadow-md` // Changed to primary color background and white text
+                        ? `bg-[${primaryColor}] text-white shadow-md` 
                         : "text-gray-600 hover:bg-white/[0.20] hover:text-gray-900"
                     )
                   }
                 >
-                  {index === 0 && (
-                    <Settings className="inline-block w-4 h-4 mr-2" />
-                  )}
-                  {index === 1 && (
-                    <Lock className="inline-block w-4 h-4 mr-2" />
-                  )}
-                  {index === 2 && (
-                    <FileText className="inline-block w-4 h-4 mr-2" />
-                  )}
-                  {index === 3 && (
-                    <Mail className="inline-block w-4 h-4 mr-2" />
-                  )}
                   {category}
                 </Tab>
               )
@@ -648,7 +636,7 @@ const App: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <a
-                    href="mailto:admin@theopenshift.com"
+                    href="mailto:admin@theopenservices.com"
                     className={`flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 bg-gray-50 text-[${primaryColor}] hover:bg-gray-100 transition duration-200 shadow-sm`}
                   >
                     <Mail className="w-8 h-8 mb-2" />

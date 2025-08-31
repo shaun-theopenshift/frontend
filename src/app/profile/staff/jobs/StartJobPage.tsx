@@ -42,9 +42,6 @@ interface TimesheetResponse {
 
 const API_BASE_URL = "https://api.theopenshift.com"; // Added API_BASE_URL to StartJobPage.tsx
 
-// --- Placeholder for Minimum Recommended Rate (example value) ---
-// In a real application, this should be fetched from a backend service
-// that implements the "Rate Mapping Engine" based on Fair Work Awards.
 const MIN_RECOMMENDED_RATE_EXAMPLE = 30.00; // Example: e.g., SCHADS Level 2 casual rate (replace with actual dynamic value)
 
 

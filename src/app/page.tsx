@@ -1,4 +1,3 @@
-// src/app/page.tsx
 "use client";
 
 import {
@@ -15,11 +14,11 @@ import {
   CalendarIcon,
   UserGroupIcon,
   BuildingOfficeIcon,
-  PlusIcon, // Added for FAQ
-  MinusIcon, // Added for FAQ
-  PhoneIcon, // Added for contact info
+  PlusIcon, 
+  MinusIcon, 
+  PhoneIcon, 
   EnvelopeIcon,
-  QuestionMarkCircleIcon, // Added for contact info
+  QuestionMarkCircleIcon, 
 } from "@heroicons/react/24/outline";
 import Navigation from "./components/Navigation";
 import { useUser } from "@auth0/nextjs-auth0/client";
@@ -29,10 +28,10 @@ import {
   useTransform,
   AnimatePresence,
 } from "framer-motion";
-import { Tab, Disclosure } from "@headlessui/react"; // Added Disclosure
+import { Tab, Disclosure } from "@headlessui/react"; 
 import RotatingText from "./components/RotatingText/RotatingText";
 
-// Define interfaces for better type safety
+// Define interfaces
 interface FormDataState {
   name: string;
   email: string;
@@ -76,7 +75,6 @@ export default function Home() {
     document.body.appendChild(script);
 
     return () => {
-      // Optional: Cleanup if component unmounts
       document.body.removeChild(script);
     };
   }, []);
@@ -112,9 +110,9 @@ export default function Home() {
   // Data for the FAQ section
   const faqItems = [
     {
-      question: "What is TheOpenShift?",
+      question: "What is TheOpenServices?",
       answer:
-        "TheOpenShift is a platform designed to streamline the process of finding and managing shifts in aged care facilities, connecting qualified staff with organizations seamlessly.",
+        "TheOpenServices is a platform designed to streamline the process of finding and managing shifts in aged care facilities, connecting qualified staff with organizations seamlessly.",
     },
     {
       question: "How do I sign up as a staff member?",
@@ -132,7 +130,7 @@ export default function Home() {
         "Yes, we offer 24/7 dedicated support to ensure smooth operations for both staff and organizations.",
     },
     {
-      question: "What kind of professionals can join TheOpenShift?",
+      question: "What kind of professionals can join TheOpenServices?",
       answer:
         "Our platform is for verified and highly qualified aged care professionals looking for work opportunities.",
     },
@@ -155,13 +153,13 @@ export default function Home() {
   });
   const curvedBgScale = useTransform(
     curvedBgScrollYProgress,
-    [0, 1], // Scroll progress from 0 to 1
-    [0.1, 2] // Scale from 10% to 200%
+    [0, 1], 
+    [0.1, 2]
   );
   const curvedBgOpacity = useTransform(
     curvedBgScrollYProgress,
-    [1, 0], // Opacity changes over scroll
-    [1, 0] // Fades in and then out
+    [1, 0], 
+    [1, 0] 
   );
 
   // Rotating text logic for "How We Work" section
@@ -170,7 +168,6 @@ export default function Home() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      // FIX: Added type for prevIndex
       setCurrentWordIndex(
         (prevIndex: number) => (prevIndex + 1) % rotatingWords.length
       );
@@ -181,14 +178,13 @@ export default function Home() {
   // Form validation and submission logic
   const validateField = useCallback(
     (name: keyof FormDataState, value: string): boolean => {
-      // FIX: Added types for name and value
       let isValid = true;
       if (name === "email") {
         isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
       } else {
         isValid = value.trim() !== "";
       }
-      setFormErrors((prev) => ({ ...prev, [name]: !isValid })); // FIX: [name] is now correctly typed
+      setFormErrors((prev) => ({ ...prev, [name]: !isValid })); 
       return isValid;
     },
     []
@@ -197,23 +193,21 @@ export default function Home() {
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    // FIX: Added type for event
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name as keyof FormDataState]: value })); // FIX: Assert name as keyof FormDataState
-    // Validate instantly for better UX
-    validateField(name as keyof FormDataState, value); // FIX: Assert name as keyof FormDataState
+    setFormData((prev) => ({ ...prev, [name as keyof FormDataState]: value })); 
+    
+    validateField(name as keyof FormDataState, value); 
   };
 
   const handleBlur = (
     e: FocusEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    // FIX: Added type for event
+    
     const { name, value } = e.target;
-    validateField(name as keyof FormDataState, value); // FIX: Assert name as keyof FormDataState
+    validateField(name as keyof FormDataState, value); e
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    // FIX: Added type for event
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitMessage("");
@@ -224,13 +218,12 @@ export default function Home() {
       name: false,
       email: false,
       message: false,
-    }; // FIX: Explicitly type newFormErrors
+    }; 
     for (const key in formData) {
-      // FIX: Assert key as keyof FormDataState
       const typedKey = key as keyof FormDataState;
-      const isValid = validateField(typedKey, formData[typedKey]); // FIX: Using typedKey for indexing
+      const isValid = validateField(typedKey, formData[typedKey]); 
       if (!isValid) {
-        newFormErrors[typedKey] = true; // FIX: Using typedKey for indexing
+        newFormErrors[typedKey] = true;
         allFieldsValid = false;
       }
     }
@@ -260,7 +253,7 @@ export default function Home() {
           "Message sent successfully! We'll get back to you soon."
         );
         setFormData({ name: "", email: "", message: "" }); // Clear form
-        setFormErrors({ name: false, email: false, message: false }); // Clear errors
+        setFormErrors({ name: false, email: false, message: false });
       } else {
         console.error("Submission error:", result);
         setSubmitMessage(
@@ -320,7 +313,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
-                TheOpenShift streamlines the process of finding and managing
+                TheOpenServices streamlines the process of finding and managing
                 shifts in aged care facilities. Join our platform to connect
                 staff with organizations seamlessly.
               </motion.p>
@@ -361,7 +354,7 @@ export default function Home() {
             </div>
 
             <motion.div
-              className="flex-1 w-full flex justify-center lg:justify-end" // Adjusted to justify-end for image on right
+              className="flex-1 w-full flex justify-center lg:justify-end" 
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.4 }}
@@ -369,7 +362,7 @@ export default function Home() {
             >
               <img
                 src="/illus1.png"
-                alt="TheOpenShift Illustration"
+                alt="TheOpenServices Illustration"
                 className="w-full h-auto max-w-lg mx-auto lg:mx-0 rounded-3xl shadow-lg"
               />
             </motion.div>
@@ -393,7 +386,7 @@ export default function Home() {
             >
               <span>Why Choose</span>
               <span className="bg-[#3464b4] text-white px-4 py-2 rounded-full whitespace-nowrap">
-                TheOpenShift
+                TheOpenServices
               </span>
             </motion.p>
           </div>
@@ -968,7 +961,7 @@ export default function Home() {
                 </p>
                 <p className="text-xl text-[#454640] flex items-center justify-center lg:justify-start gap-2">
                   <EnvelopeIcon className="w-6 h-6 text-[#fe7239]" />{" "}
-                  contact@theopenshift.com
+                  contact@theopenservices.com
                 </p>
               </motion.div>
             </div>
@@ -982,7 +975,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <h3 className="text-xl font-bold mb-4 text-white">
-                TheOpenShift
+                TheOpenServices
               </h3>
               <p className="text-white">
                 Thoughtful care for every life - powered by purpose and
@@ -1042,14 +1035,14 @@ export default function Home() {
             <div>
               <h4 className="font-semibold mb-4 text-white">Contact</h4>
               <ul className="space-y-2">
-                <li className="text-white">Email: contact@theopenshift.com</li>
+                <li className="text-white">Email: contact@theopenservices.com</li>
                 <li className="text-white">Phone: +61 438 143 059</li>
               </ul>
             </div>
           </div>
           <div className="border-t border-white mt-8 pt-8 text-center text-white">
             <p>
-              &copy; {new Date().getFullYear()} TheOpenShift. All rights
+              &copy; {new Date().getFullYear()} TheOpenServices. All rights
               reserved.
             </p>
           </div>

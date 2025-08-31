@@ -16,6 +16,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#2954bd" />
+        {/* ...other meta tags if needed... */}
+      </head>
       <body className={inter.className}>
         <UserProvider loginUrl="/api/auth/login?audience=https://api.theopenshift.com" profileUrl="/api/auth/me">
           {children}

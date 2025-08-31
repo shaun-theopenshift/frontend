@@ -1,0 +1,21 @@
+{
+  "name": "TheOpenShift",
+  "short_name": "OpenShift",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f6f8fa",
+  "theme_color": "#2954bd",
+  "description": "Bridging Aged care organisations and Individual contractors",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

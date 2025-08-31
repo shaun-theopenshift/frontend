@@ -855,9 +855,9 @@ export default function EditProfilePage() {
                                           <span className="font-bold text-lg mb-2">{badge.label}</span>
                                           <input
                                             type="checkbox"
-                                            className="hidden" // Hide the default checkbox
+                                            className="hidden" 
                                             checked={isSelected}
-                                            readOnly // Make it read-only as the button handles clicks
+                                            readOnly
                                           />
                                           <span className={`w-6 h-6 flex items-center justify-center rounded-full border-2 transition-all duration-200
                                             ${isSelected ? 'bg-white text-[#3464b4] border-white' : 'bg-white text-transparent border-gray-400'}

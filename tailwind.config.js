@@ -13,7 +13,7 @@ module.exports = {
           coral: '#FF5665B',
           mint: '#A88ECF',
           light: '#F4F4F4',
-          dark: '#2954bd', // for button outlines
+          dark: '#2954bd', 
           accent: '#f07057',
           bgLight: '#aee0d5',
         },

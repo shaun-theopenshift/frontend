@@ -1266,7 +1266,7 @@ export default function StaffPage() {
           <div className="flex items-center justify-between mb-4">
             <Link href="/" className="-m-1.5 p-1.5">
               <span className="text-2xl font-semibold text-[#3464b4]">
-                TheOpenShift
+                TheOpenServies
               </span>
             </Link>
             <button

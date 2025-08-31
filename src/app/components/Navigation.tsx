@@ -94,7 +94,7 @@ export default function Navigation() {
             transition={{ duration: 0.3 }}
           >
             <Link href="/" className="text-2xl font-bold text-gray-900 hover:text-blue-700 whitespace-nowrap">
-              TheOpenShift
+              TheOpenServices
             </Link>
           </motion.div>
 
