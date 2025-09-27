@@ -47,7 +47,7 @@ export const staffNav: NavItem[] = [
   { name: "Profile", href: "/profile", icon: UserIcon }, // Changed icon to UserIcon for 'Profile'
   { name: "Jobs", href: "/profile/staff/jobs", icon: BriefcaseIcon },
   //{ name: 'Inbox', href: '/profile/staff/inbox', icon: InboxIcon },
-  { name: "Compliance", href: "/compliance", icon: ClipboardDocumentCheckIcon },
+  { name: "Compliance", href: "/profile/staff/compliance", icon: ClipboardDocumentCheckIcon },
   { name: "Account", href: "/profile/staff/account", icon: Cog6ToothIcon },
 ];
 
